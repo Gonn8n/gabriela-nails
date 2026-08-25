@@ -1,0 +1,103 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id        String        @id @default(cuid())
+  dni       String        @unique
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  birthDate DateTime?
+  createdAt DateTime      @default(now())
+  appointments Appointment[]
+}
+
+model Service {
+  id        String  @id @default(cuid())
+  name      String
+  description String?
+  duration  Int     @default(60)
+  price     Float   @default(0)
+  color     String  @default("#6b7280")
+  category  String?
+  active    Boolean @default(true)
+  appointmentServices AppointmentService[]
+}
+
+model Appointment {
+  id            String   @id @default(cuid())
+  identifier    String   @unique
+  clientId      String
+  status        String   @default("booked")
+  date          DateTime
+  startTime     String
+  endTime       String
+  totalPrice    Float    @default(0)
+  notes         String?
+  whatsappSent  Boolean  @default(false)
+  emailSent     Boolean  @default(false)
+  calendarEvent Boolean  @default(false)
+  cancelledAt   DateTime?
+  cancelReason  String?
+  createdAt     DateTime @default(now())
+  client        Client   @relation(fields: [clientId], references: [id])
+  services      AppointmentService[]
+  activityNotes ActivityNote[]
+}
+
+model AppointmentService {
+  id            String      @id @default(cuid())
+  appointmentId String
+  serviceId     String
+  price         Float
+  duration      Int
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  service       Service     @relation(fields: [serviceId], references: [id])
+}
+
+model ActivityNote {
+  id            String      @id @default(cuid())
+  appointmentId String
+  content       String
+  createdAt     DateTime    @default(now())
+  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  date      DateTime
+  startTime String
+  endTime   String
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model WorkingDay {
+  id        String  @id @default(cuid())
+  dayOfWeek Int
+  openTime  String  @default("09:00")
+  closeTime String  @default("18:00")
+  active    Boolean @default(true)
+}
+
+model Settings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
