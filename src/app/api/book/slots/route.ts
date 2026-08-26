@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
-function getSetting(key: string, fallback: string): string {
-  const row = db.prepare("SELECT value FROM Settings WHERE key = ?").get(`setting:${key}`) as { value: string } | undefined
-  return row?.value ?? fallback
+async function getSetting(key: string, fallback: string): Promise<string> {
+  const { data } = await supabase
+    .from("Settings")
+    .select("value")
+    .eq("key", `setting:${key}`)
+    .single()
+  return data?.value ?? fallback
 }
 
 export async function GET(request: Request) {
@@ -16,8 +20,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Fecha requerida" }, { status: 400 })
     }
 
-    // Check if date is a working day
-    const workingDaysStr = getSetting("workingDays", "1,2,3,4,5,6")
+    const workingDaysStr = await getSetting("workingDays", "1,2,3,4,5,6")
     const workingDays = workingDaysStr.split(",").map(Number)
     const dateObj = new Date(date + "T12:00:00")
     const dayOfWeek = dateObj.getDay()
@@ -26,34 +29,35 @@ export async function GET(request: Request) {
       return NextResponse.json({ slots: [], reason: "Día no laborable" })
     }
 
-    // Get settings
-    const workStart = getSetting("workingHoursStart", "09:00")
-    const workEnd = getSetting("workingHoursEnd", "19:00")
-    const breakStart = getSetting("breakStart", "12:00")
-    const breakEnd = getSetting("breakEnd", "13:00")
-    const slotDuration = parseInt(getSetting("slotDuration", "30"))
+    const workStart = await getSetting("workingHoursStart", "09:00")
+    const workEnd = await getSetting("workingHoursEnd", "19:00")
+    const breakStart = await getSetting("breakStart", "12:00")
+    const breakEnd = await getSetting("breakEnd", "13:00")
+    const slotDuration = parseInt(await getSetting("slotDuration", "30"))
 
-    // Get total duration for selected services
     let totalDuration = slotDuration
     if (serviceIds.length > 0) {
-      const placeholders = serviceIds.map(() => "?").join(",")
-      const services = db.prepare(`SELECT duration FROM Service WHERE id IN (${placeholders})`).all(...serviceIds) as { duration: number }[]
-      if (services.length > 0) {
+      const { data: services } = await supabase
+        .from("Service")
+        .select("duration")
+        .in("id", serviceIds)
+
+      if (services && services.length > 0) {
         totalDuration = services.reduce((sum, s) => sum + s.duration, 0)
       }
     }
 
-    // Get blocked slots for this date
-    const blocked = db.prepare(
-      "SELECT startTime, endTime FROM BlockedSlot WHERE date = ?"
-    ).all(date) as { startTime: string; endTime: string }[]
+    const { data: blocked } = await supabase
+      .from("BlockedSlot")
+      .select("startTime, endTime")
+      .eq("date", date)
 
-    // Get existing appointments for this date
-    const appointments = db.prepare(
-      "SELECT startTime, endTime FROM Appointment WHERE date = ? AND status != 'cancelled'"
-    ).all(date) as { startTime: string; endTime: string }[]
+    const { data: appointments } = await supabase
+      .from("Appointment")
+      .select("startTime, endTime")
+      .eq("date", date)
+      .neq("status", "cancelled")
 
-    // Generate all possible slots
     const [startH, startM] = workStart.split(":").map(Number)
     const [endH, endM] = workEnd.split(":").map(Number)
     const [breakStartH, breakStartM] = breakStart.split(":").map(Number)
@@ -66,31 +70,28 @@ export async function GET(request: Request) {
 
     const slots: string[] = []
     const now = new Date()
-    const isToday = date === now.toISOString().split("T")[0]
+    const todayLocal = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`
+    const isToday = date === todayLocal
 
     for (let min = dayStartMin; min + totalDuration <= dayEndMin; min += slotDuration) {
       const slotEnd = min + totalDuration
       const slotTime = `${Math.floor(min / 60).toString().padStart(2, "0")}:${(min % 60).toString().padStart(2, "0")}`
       const slotEndTime = `${Math.floor(slotEnd / 60).toString().padStart(2, "0")}:${(slotEnd % 60).toString().padStart(2, "0")}`
 
-      // Skip if slot overlaps with break
       if (min < breakEndMin && slotEnd > breakStartMin) {
         continue
       }
 
-      // Skip if slot overlaps with blocked time
-      const overlapsBlocked = blocked.some(
+      const overlapsBlocked = (blocked || []).some(
         (b) => min < timeToMinutes(b.endTime) && slotEnd > timeToMinutes(b.startTime)
       )
       if (overlapsBlocked) continue
 
-      // Skip if slot overlaps with existing appointment
-      const overlapsAppointment = appointments.some(
+      const overlapsAppointment = (appointments || []).some(
         (a) => min < timeToMinutes(a.endTime) && slotEnd > timeToMinutes(a.startTime)
       )
       if (overlapsAppointment) continue
 
-      // Skip if slot is in the past (for today)
       if (isToday) {
         const currentMin = now.getHours() * 60 + now.getMinutes()
         if (min <= currentMin) continue

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 import crypto from "crypto"
 
 function hashPassword(password: string): string {
@@ -18,7 +18,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const user = db.prepare("SELECT * FROM User WHERE email = ?").get(email) as Record<string, unknown> | undefined
+    const { data: user } = await supabase
+      .from("User")
+      .select("*")
+      .eq("email", email)
+      .single()
 
     if (!user) {
       return NextResponse.json(
@@ -27,8 +31,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get password hash from Settings
-    const passwordData = db.prepare("SELECT value FROM Settings WHERE key = ?").get(`user:${user.id}:password`) as { value: string } | undefined
+    const { data: passwordData } = await supabase
+      .from("Settings")
+      .select("value")
+      .eq("key", `user:${user.id}:password`)
+      .single()
 
     if (!passwordData || passwordData.value !== hashPassword(password)) {
       return NextResponse.json(
@@ -37,12 +44,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create session token
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
-    db.prepare("INSERT INTO Settings (id, key, value) VALUES (?, ?, ?)")
-      .run(crypto.randomUUID(), `session:${token}`, JSON.stringify({ userId: user.id, expiresAt }))
+    await supabase
+      .from("Settings")
+      .insert({
+        id: crypto.randomUUID(),
+        key: `session:${token}`,
+        value: JSON.stringify({ userId: user.id, expiresAt }),
+      })
 
     const response = NextResponse.json({
       user: {

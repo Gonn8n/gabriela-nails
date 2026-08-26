@@ -1,11 +1,10 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Search, X } from "lucide-react"
+import {
+  Plus,
+  Search,
+  CalendarClock,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  MessageSquare,
+  Calendar,
+} from "lucide-react"
 
 interface Client {
   id: string
@@ -49,33 +57,34 @@ interface Appointment {
   services: { service: Service }[]
 }
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "Todos" },
-  { value: "booked", label: "Reservados" },
-  { value: "confirmed", label: "Confirmados" },
-  { value: "in_progress", label: "En curso" },
-  { value: "completed", label: "Completados" },
-  { value: "cancelled", label: "Cancelados" },
+const STATUS_ACTIONS = [
+  { value: "booked", label: "Reservado", icon: CalendarClock, bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", activeBg: "bg-blue-100", activeBorder: "border-blue-400" },
+  { value: "completed", label: "Completado", icon: CheckCircle, bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", activeBg: "bg-emerald-100", activeBorder: "border-emerald-400" },
+  { value: "cancelled", label: "Cancelado", icon: XCircle, bg: "bg-red-50", border: "border-red-200", text: "text-red-700", activeBg: "bg-red-100", activeBorder: "border-red-400" },
+  { value: "rescheduled", label: "Reprogramado", icon: RefreshCw, bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", activeBg: "bg-violet-100", activeBorder: "border-violet-400" },
 ]
+
+const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }> = {
+  booked: { border: "border-l-blue-400", bg: "bg-blue-50/30", badge: "bg-blue-100 text-blue-700" },
+  completed: { border: "border-l-emerald-400", bg: "bg-emerald-50/30", badge: "bg-emerald-100 text-emerald-700" },
+  cancelled: { border: "border-l-red-300", bg: "bg-red-50/20", badge: "bg-red-100 text-red-600" },
+  rescheduled: { border: "border-l-violet-400", bg: "bg-violet-50/30", badge: "bg-violet-100 text-violet-700" },
+}
 
 const STATUS_LABELS: Record<string, string> = {
   booked: "Reservado",
-  confirmed: "Confirmado",
-  in_progress: "En curso",
   completed: "Completado",
   cancelled: "Cancelado",
+  rescheduled: "Reprogramado",
 }
 
-function getStatusBadge(status: string) {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-    booked: "default",
-    confirmed: "secondary",
-    in_progress: "outline",
-    completed: "secondary",
-    cancelled: "destructive",
-  }
-  return <Badge variant={variants[status] || "default"}>{STATUS_LABELS[status] || status}</Badge>
-}
+const FILTER_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "booked", label: "Reservados" },
+  { value: "completed", label: "Completados" },
+  { value: "cancelled", label: "Cancelados" },
+  { value: "rescheduled", label: "Reprogramados" },
+]
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -85,9 +94,17 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
+  const [notesValue, setNotesValue] = useState("")
+
+  function getTodayStr(): string {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  }
+
   const [form, setForm] = useState({
     clientId: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getTodayStr(),
     startTime: "10:00",
     serviceIds: [] as string[],
     notes: "",
@@ -117,7 +134,7 @@ export default function AppointmentsPage() {
   function openCreate() {
     setForm({
       clientId: "",
-      date: new Date().toISOString().split("T")[0],
+      date: getTodayStr(),
       startTime: "10:00",
       serviceIds: [],
       notes: "",
@@ -147,21 +164,19 @@ export default function AppointmentsPage() {
     fetchData()
   }
 
-  async function handleCancel(id: string) {
-    const apt = appointments.find((a) => a.id === id)
-    if (apt) {
-      const aptDateTime = new Date(`${apt.date.split("T")[0]}T${apt.startTime}`)
-      if (aptDateTime < new Date(Date.now() + 2 * 60 * 60 * 1000)) {
-        alert("No se puede cancelar con menos de 2 horas de anticipación")
-        return
-      }
-    }
-    if (!confirm("¿Cancelar este turno?")) return
-    await fetch(`/api/appointments/${id}`, {
+  function openNotes(apt: Appointment) {
+    setNotesDialog({ open: true, apt })
+    setNotesValue(apt.notes || "")
+  }
+
+  async function saveNotes() {
+    if (!notesDialog.apt) return
+    await fetch(`/api/appointments/${notesDialog.apt.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "cancelled" }),
+      body: JSON.stringify({ notes: notesValue }),
     })
+    setNotesDialog({ open: false, apt: null })
     fetchData()
   }
 
@@ -177,6 +192,11 @@ export default function AppointmentsPage() {
   const selectedServices = services.filter((s) => form.serviceIds.includes(s.id))
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0)
+
+  function formatDate(dateStr: string) {
+    const [y, m, d] = dateStr.split("-")
+    return `${d}/${m}`
+  }
 
   if (loading) return <div className="text-center py-8">Cargando turnos...</div>
 
@@ -203,69 +223,122 @@ export default function AppointmentsPage() {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v || "all")}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-1 flex-wrap">
+          {FILTER_OPTIONS.map((opt) => (
+            <Button
+              key={opt.value}
+              variant={statusFilter === opt.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(opt.value)}
+              className="text-xs"
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {appointments.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No se encontraron turnos
+          <CardContent className="py-12 text-center">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+            <p className="text-muted-foreground font-medium">No hay turnos</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">
+              {search || statusFilter !== "all"
+                ? "No se encontraron turnos con esos filtros"
+                : "Creá el primer turno para comenzar"}
+            </p>
+            {!search && statusFilter === "all" && (
+              <Button onClick={openCreate} size="sm" className="mt-4">
+                <Plus className="h-4 w-4 mr-1" />
+                Nuevo Turno
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {appointments.map((apt) => (
-            <Card key={apt.id}>
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="text-center min-w-[52px] shrink-0">
-                      <div className="text-lg font-bold leading-tight">
-                        {new Date(apt.date).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })}
+        <div className="space-y-2">
+          {appointments.map((apt) => {
+            const cardStyle = STATUS_CARD[apt.status] || STATUS_CARD.booked
+            const isActive = (v: string) => apt.status === v
+            return (
+              <Card key={apt.id} className={`overflow-hidden border-l-4 ${cardStyle.border} ${cardStyle.bg}`}>
+                <CardContent className="p-3 sm:p-4">
+                  {/* Fila 1: info + icono nota */}
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="text-center shrink-0 w-12">
+                        <div className="text-lg font-bold leading-tight text-gray-900">
+                          {formatDate(apt.date)}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">{apt.startTime}</div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{apt.startTime}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-gray-900 truncate">
+                          {apt.client.firstName} {apt.client.lastName}
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {apt.services.map((s) => s.service.name).join(", ")}
+                        </div>
+                        <div className="text-xs text-muted-foreground/70 mt-0.5">
+                          {apt.identifier} · {apt.endTime} · ${apt.totalPrice.toLocaleString("es-AR")}
+                        </div>
+                        {/* Badge de estado — solo mobile */}
+                        <span className={`sm:hidden inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${cardStyle.badge}`}>
+                          {STATUS_LABELS[apt.status]}
+                        </span>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{apt.client.firstName} {apt.client.lastName}</div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {apt.services.map((s) => s.service.name).join(", ")}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {apt.identifier} | {apt.endTime} | ${apt.totalPrice.toFixed(2)}
-                      </div>
-                    </div>
+                    {/* Botón nota — siempre visible */}
+                    <button
+                      onClick={() => openNotes(apt)}
+                      className={`shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-md transition-colors ${
+                        apt.notes
+                          ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                          : "text-muted-foreground hover:bg-gray-100"
+                      }`}
+                      title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {getStatusBadge(apt.status)}
-                    <Select value={apt.status} onValueChange={(v) => v && handleStatusChange(apt.id, v)}>
-                      <SelectTrigger className="w-[110px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(STATUS_LABELS).filter(([k]) => k !== "cancelled").map(([k, v]) => (
-                          <SelectItem key={k} value={k}>{v}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {apt.status !== "cancelled" && (
-                      <Button variant="ghost" size="icon" onClick={() => handleCancel(apt.id)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
+
+                  {/* Fila 2: nota inline — solo si existe */}
+                  {apt.notes && (
+                    <button
+                      onClick={() => openNotes(apt)}
+                      className="w-full text-left text-xs text-amber-700/80 bg-amber-50/60 border border-amber-200/40 rounded-md px-2.5 py-1.5 mb-2 hover:bg-amber-50 transition-colors cursor-pointer truncate"
+                    >
+                      <MessageSquare className="h-3 w-3 inline mr-1 opacity-50" />
+                      {apt.notes}
+                    </button>
+                  )}
+
+                  {/* Fila 3: botones de estado — grid 4 cols */}
+                  <div className="grid grid-cols-4 gap-1">
+                    {STATUS_ACTIONS.map((action) => {
+                      const active = isActive(action.value)
+                      const Icon = action.icon
+                      return (
+                        <button
+                          key={action.value}
+                          onClick={() => handleStatusChange(apt.id, action.value)}
+                          className={`inline-flex items-center justify-center gap-1 px-1 py-1.5 rounded-md text-[11px] font-medium border transition-all duration-150 ${
+                            active
+                              ? `${action.activeBg} ${action.activeBorder} ${action.text}`
+                              : `${action.bg} ${action.border} ${action.text} opacity-50 hover:opacity-100`
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="hidden sm:inline">{action.label}</span>
+                        </button>
+                      )
+                    })}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -307,13 +380,13 @@ export default function AppointmentsPage() {
                     onClick={() => toggleService(s.id)}
                     className="text-sm"
                   >
-                    {s.name} - ${s.price}
+                    {s.name} - ${s.price.toLocaleString("es-AR")}
                   </Button>
                 ))}
               </div>
               {form.serviceIds.length > 0 && (
                 <div className="text-sm text-muted-foreground">
-                  Total: ${totalPrice.toFixed(2)} | Duración: {totalDuration} min
+                  Total: ${totalPrice.toLocaleString("es-AR")} · {totalDuration} min
                 </div>
               )}
             </div>
@@ -325,6 +398,35 @@ export default function AppointmentsPage() {
               Crear Turno
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={notesDialog.open} onOpenChange={(open) => setNotesDialog({ open, apt: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nota del turno</DialogTitle>
+          </DialogHeader>
+          {notesDialog.apt && (
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                {notesDialog.apt.identifier} · {notesDialog.apt.client.firstName} {notesDialog.apt.client.lastName}
+              </div>
+              <textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                placeholder="Agregar nota..."
+                className="w-full min-h-[100px] border rounded-md px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setNotesDialog({ open: false, apt: null })} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={saveNotes} className="flex-1">
+                  Guardar
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,21 +1,21 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search") || ""
 
-    let clients
+    let query = supabase
+      .from("Client")
+      .select("*")
+      .order("firstName", { ascending: true })
+
     if (search) {
-      clients = db.prepare(
-        `SELECT * FROM Client 
-         WHERE firstName LIKE ? OR lastName LIKE ? OR dni LIKE ? OR email LIKE ? OR phone LIKE ?
-         ORDER BY firstName ASC`
-      ).all(...Array(5).fill(`%${search}%`)) as Record<string, unknown>[]
-    } else {
-      clients = db.prepare("SELECT * FROM Client ORDER BY firstName ASC").all() as Record<string, unknown>[]
+      query = query.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,dni.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
     }
+
+    const { data: clients } = await query
 
     return NextResponse.json(clients)
   } catch (error) {
@@ -36,8 +36,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if DNI already exists
-    const existing = db.prepare("SELECT id FROM Client WHERE dni = ?").get(dni)
+    const { data: existing } = await supabase
+      .from("Client")
+      .select("id")
+      .eq("dni", dni)
+      .single()
+
     if (existing) {
       return NextResponse.json(
         { error: "Ya existe un cliente con este DNI" },
@@ -46,11 +50,27 @@ export async function POST(request: Request) {
     }
 
     const id = crypto.randomUUID()
-    db.prepare(
-      "INSERT INTO Client (id, dni, firstName, lastName, email, phone, birthDate) VALUES (?, ?, ?, ?, ?, ?, ?)"
-    ).run(id, dni, firstName, lastName, email || null, phone || null, birthDate || null)
 
-    const client = db.prepare("SELECT * FROM Client WHERE id = ?").get(id) as Record<string, unknown>
+    const { error: insertError } = await supabase
+      .from("Client")
+      .insert({
+        id,
+        dni,
+        firstName,
+        lastName,
+        email: email || null,
+        phone: phone || null,
+        birthDate: birthDate || null,
+      })
+
+    if (insertError) throw insertError
+
+    const { data: client } = await supabase
+      .from("Client")
+      .select("*")
+      .eq("id", id)
+      .single()
+
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
     console.error("API Error:", error)

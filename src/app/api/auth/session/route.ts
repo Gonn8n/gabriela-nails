@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +11,12 @@ export async function GET(request: Request) {
     }
 
     const token = sessionMatch[1]
-    const sessionData = db.prepare("SELECT value FROM Settings WHERE key = ?").get(`session:${token}`) as { value: string } | undefined
+
+    const { data: sessionData } = await supabase
+      .from("Settings")
+      .select("value")
+      .eq("key", `session:${token}`)
+      .single()
 
     if (!sessionData) {
       return NextResponse.json({ user: null })
@@ -20,11 +25,15 @@ export async function GET(request: Request) {
     const session = JSON.parse(sessionData.value)
 
     if (new Date(session.expiresAt) < new Date()) {
-      db.prepare("DELETE FROM Settings WHERE key = ?").run(`session:${token}`)
+      await supabase.from("Settings").delete().eq("key", `session:${token}`)
       return NextResponse.json({ user: null })
     }
 
-    const user = db.prepare("SELECT id, email, name FROM User WHERE id = ?").get(session.userId)
+    const { data: user } = await supabase
+      .from("User")
+      .select("id, email, name")
+      .eq("id", session.userId)
+      .single()
 
     return NextResponse.json({ user })
   } catch (error) {

@@ -53,9 +53,10 @@ model Appointment {
   whatsappSent  Boolean  @default(false)
   emailSent     Boolean  @default(false)
   calendarEvent Boolean  @default(false)
-  cancelledAt   DateTime?
-  cancelReason  String?
-  createdAt     DateTime @default(now())
+  cancelledAt      DateTime?
+  cancelReason     String?
+  rescheduledFrom  String?
+  createdAt        DateTime @default(now())
   client        Client   @relation(fields: [clientId], references: [id])
   services      AppointmentService[]
   activityNotes ActivityNote[]

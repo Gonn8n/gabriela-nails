@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,8 +47,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-pink-50">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-pink-600">
-            Gabriela Nails
+          <CardTitle className="text-center">
+            <Image src="/logo-gabriela.png" alt="Gabriela Nails" width={200} height={52} className="h-14 w-auto mx-auto" priority />
           </CardTitle>
           <CardDescription>
             Ingresá para gestionar tus turnos

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     if (sessionMatch) {
       const token = sessionMatch[1]
-      db.prepare("DELETE FROM Settings WHERE key = ?").run(`session:${token}`)
+      await supabase.from("Settings").delete().eq("key", `session:${token}`)
     }
 
     const response = NextResponse.json({ success: true })

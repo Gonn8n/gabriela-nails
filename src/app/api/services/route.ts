@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function GET() {
   try {
-    const services = db.prepare("SELECT * FROM Service WHERE active = 1 ORDER BY name ASC").all() as Record<string, unknown>[]
+    const { data: services } = await supabase
+      .from("Service")
+      .select("*")
+      .eq("active", true)
+      .order("name", { ascending: true })
+
     return NextResponse.json(services)
   } catch (error) {
     console.error("API Error:", error)
@@ -14,7 +19,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, description, duration, price, color, category } = body
+    const { name, description, duration, price, color } = body
 
     if (!name || !duration || !price) {
       return NextResponse.json(
@@ -24,11 +29,27 @@ export async function POST(request: Request) {
     }
 
     const id = crypto.randomUUID()
-    db.prepare(
-      "INSERT INTO Service (id, name, description, duration, price, color, category, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
-    ).run(id, name, description || null, parseInt(duration), parseFloat(price), color || "#6b7280", category || null)
 
-    const service = db.prepare("SELECT * FROM Service WHERE id = ?").get(id) as Record<string, unknown>
+    const { error: insertError } = await supabase
+      .from("Service")
+      .insert({
+        id,
+        name,
+        description: description || null,
+        duration: parseInt(duration),
+        price: parseFloat(price),
+        color: color || "#6b7280",
+        active: true,
+      })
+
+    if (insertError) throw insertError
+
+    const { data: service } = await supabase
+      .from("Service")
+      .select("*")
+      .eq("id", id)
+      .single()
+
     return NextResponse.json(service, { status: 201 })
   } catch (error) {
     console.error("API Error:", error)

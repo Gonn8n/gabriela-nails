@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function PUT(
   request: Request,
@@ -10,16 +10,30 @@ export async function PUT(
     const body = await request.json()
     const { status, notes } = body
 
+    const updateData: Record<string, unknown> = {}
+
     if (status) {
-      db.prepare("UPDATE Appointment SET status = ?, cancelledAt = CASE WHEN ? = 'cancelled' THEN datetime('now') ELSE cancelledAt END WHERE id = ?")
-        .run(status, status, id)
+      updateData.status = status
+      if (status === "cancelled") {
+        updateData.cancelledAt = new Date().toISOString()
+      }
     }
 
     if (notes !== undefined) {
-      db.prepare("UPDATE Appointment SET notes = ? WHERE id = ?").run(notes, id)
+      updateData.notes = notes
     }
 
-    const appointment = db.prepare("SELECT * FROM Appointment WHERE id = ?").get(id)
+    await supabase
+      .from("Appointment")
+      .update(updateData)
+      .eq("id", id)
+
+    const { data: appointment } = await supabase
+      .from("Appointment")
+      .select("*")
+      .eq("id", id)
+      .single()
+
     return NextResponse.json(appointment)
   } catch (error) {
     console.error("API Error:", error)
@@ -33,9 +47,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    db.prepare("DELETE FROM AppointmentService WHERE appointmentId = ?").run(id)
-    db.prepare("DELETE FROM ActivityNote WHERE appointmentId = ?").run(id)
-    db.prepare("DELETE FROM Appointment WHERE id = ?").run(id)
+
+    await supabase.from("AppointmentService").delete().eq("appointmentId", id)
+    await supabase.from("ActivityNote").delete().eq("appointmentId", id)
+    await supabase.from("Appointment").delete().eq("id", id)
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("API Error:", error)

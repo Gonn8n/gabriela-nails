@@ -64,7 +64,7 @@ export default function ClientsPage() {
       lastName: client.lastName,
       email: client.email || "",
       phone: client.phone || "",
-      birthDate: client.birthDate ? new Date(client.birthDate).toISOString().split("T")[0] : "",
+      birthDate: client.birthDate ? client.birthDate.split("T")[0] : "",
     })
     setDialogOpen(true)
   }
@@ -148,7 +148,7 @@ export default function ClientsPage() {
                     <td className="p-3 text-muted-foreground text-sm">{client.email || "-"}</td>
                     <td className="p-3 text-sm">{client.phone || "-"}</td>
                     <td className="p-3 text-muted-foreground text-sm">
-                      {client.birthDate ? new Date(client.birthDate).toLocaleDateString("es-AR") : "-"}
+                      {client.birthDate ? (() => { const [y,m,d] = client.birthDate.split("T")[0].split("-"); return `${d}/${m}/${y}` })() : "-"}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">

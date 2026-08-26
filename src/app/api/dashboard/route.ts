@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
-interface Row {
-  id: string
-  identifier: string
-  date: string
-  startTime: string
-  endTime: string
-  status: string
-  totalPrice: number
-  clientFirstName: string
-  clientLastName: string
+function getLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
 }
 
 export async function GET(request: Request) {
@@ -19,34 +14,31 @@ export async function GET(request: Request) {
     const range = searchParams.get("range") || "today"
 
     const now = new Date()
+    const todayStr = getLocalDateStr(now)
     let startDate: string
-    const endDate = now.toISOString().split("T")[0]
+    let endDate: string
 
     if (range === "today") {
-      startDate = endDate
+      startDate = todayStr
+      endDate = todayStr
     } else {
       const days = parseInt(range) || 7
-      const start = new Date(now)
-      start.setDate(start.getDate() - days)
-      startDate = start.toISOString().split("T")[0]
+      startDate = todayStr
+      const end = new Date(now)
+      end.setDate(end.getDate() + days)
+      endDate = getLocalDateStr(end)
     }
 
-    // Get appointments in range (excluding cancelled)
-    const appointments = db.prepare(`
-      SELECT a.*, c.firstName as clientFirstName, c.lastName as clientLastName
-      FROM Appointment a
-      JOIN Client c ON a.clientId = c.id
-      WHERE a.date >= ? AND a.date <= ? AND a.status != 'cancelled'
-      ORDER BY a.date DESC, a.startTime ASC
-    `).all(startDate, endDate) as Row[]
+    const { data: appointments } = await supabase
+      .from("Appointment")
+      .select("*, client:Client(id, firstName, lastName), services:AppointmentService(id, service:Service(name, color))")
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .neq("status", "cancelled")
+      .order("date", { ascending: false })
+      .order("startTime", { ascending: true })
 
-    // Get services for each appointment
-    const servicesStmt = db.prepare(`
-      SELECT s.name, s.color FROM AppointmentService aps
-      JOIN Service s ON aps.serviceId = s.id WHERE aps.appointmentId = ?
-    `)
-
-    const formatted = appointments.map((apt) => ({
+    const formatted = (appointments || []).map((apt) => ({
       id: apt.id,
       identifier: apt.identifier,
       date: apt.date,
@@ -54,38 +46,59 @@ export async function GET(request: Request) {
       endTime: apt.endTime,
       status: apt.status,
       totalPrice: apt.totalPrice,
-      client: { firstName: apt.clientFirstName, lastName: apt.clientLastName },
-      services: (servicesStmt.all(apt.id) as { name: string; color: string }[]).map((s) => ({
-        service: { name: s.name, color: s.color },
-      })),
+      client: apt.client,
+      services: apt.services,
     }))
 
-    // Stats
-    const upcoming = db.prepare(
-      "SELECT COUNT(*) as count FROM Appointment WHERE date >= ? AND date <= ? AND status IN ('booked', 'confirmed')"
-    ).get(startDate, endDate) as { count: number }
+    const { count: upcomingCount } = await supabase
+      .from("Appointment")
+      .select("*", { count: "exact", head: true })
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .in("status", ["booked", "confirmed"])
 
-    const completed = db.prepare(
-      "SELECT COUNT(*) as count FROM Appointment WHERE date >= ? AND date <= ? AND status = 'completed'"
-    ).get(startDate, endDate) as { count: number }
+    const { count: completedCount } = await supabase
+      .from("Appointment")
+      .select("*", { count: "exact", head: true })
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .eq("status", "completed")
 
-    const cancelled = db.prepare(
-      "SELECT COUNT(*) as count FROM Appointment WHERE date >= ? AND date <= ? AND status = 'cancelled'"
-    ).get(startDate, endDate) as { count: number }
+    const { count: cancelledCount } = await supabase
+      .from("Appointment")
+      .select("*", { count: "exact", head: true })
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .eq("status", "cancelled")
 
-    const totalClients = db.prepare("SELECT COUNT(*) as count FROM Client").get() as { count: number }
+    const { count: rescheduledCount } = await supabase
+      .from("Appointment")
+      .select("*", { count: "exact", head: true })
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .not("rescheduledFrom", "is", null)
 
-    const revenue = db.prepare(
-      "SELECT COALESCE(SUM(totalPrice), 0) as total FROM Appointment WHERE date >= ? AND date <= ? AND status = 'completed'"
-    ).get(startDate, endDate) as { total: number }
+    const { count: totalClients } = await supabase
+      .from("Client")
+      .select("*", { count: "exact", head: true })
+
+    const { data: revenueData } = await supabase
+      .from("Appointment")
+      .select("totalPrice")
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .in("status", ["completed", "booked", "confirmed"])
+
+    const revenue = (revenueData || []).reduce((sum, r) => sum + (r.totalPrice || 0), 0)
 
     return NextResponse.json({
       todayAppointments: formatted,
-      upcomingCount: upcoming.count,
-      completedCount: completed.count,
-      cancelledCount: cancelled.count,
-      totalClients: totalClients.count,
-      revenue: revenue.total,
+      upcomingCount: upcomingCount || 0,
+      completedCount: completedCount || 0,
+      cancelledCount: cancelledCount || 0,
+      rescheduledCount: rescheduledCount || 0,
+      totalClients: totalClients || 0,
+      revenue,
     })
   } catch (error) {
     console.error("API Error:", error)

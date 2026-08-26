@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 export async function GET() {
   try {
-    const slots = db.prepare(
-      "SELECT * FROM BlockedSlot ORDER BY date ASC, startTime ASC"
-    ).all() as { id: string; date: string; startTime: string; endTime: string; reason: string | null }[]
+    const { data: slots } = await supabase
+      .from("BlockedSlot")
+      .select("*")
+      .order("date", { ascending: true })
+      .order("startTime", { ascending: true })
+
     return NextResponse.json(slots)
   } catch (error) {
     console.error("API Error:", error)
@@ -26,9 +29,18 @@ export async function POST(request: Request) {
     }
 
     const id = crypto.randomUUID()
-    db.prepare(
-      "INSERT INTO BlockedSlot (id, date, startTime, endTime, reason) VALUES (?, ?, ?, ?, ?)"
-    ).run(id, date, startTime, endTime, reason || null)
+
+    const { error: insertError } = await supabase
+      .from("BlockedSlot")
+      .insert({
+        id,
+        date,
+        startTime,
+        endTime,
+        reason: reason || null,
+      })
+
+    if (insertError) throw insertError
 
     return NextResponse.json({ id, date, startTime, endTime, reason }, { status: 201 })
   } catch (error) {
@@ -46,7 +58,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "ID requerido" }, { status: 400 })
     }
 
-    db.prepare("DELETE FROM BlockedSlot WHERE id = ?").run(id)
+    await supabase.from("BlockedSlot").delete().eq("id", id)
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error("API Error:", error)

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, DollarSign, Clock } from "lucide-react"
+import { Calendar, Users, DollarSign, Clock, RefreshCw } from "lucide-react"
 
 interface DashboardData {
   todayAppointments: {
@@ -21,15 +21,16 @@ interface DashboardData {
   upcomingCount: number
   completedCount: number
   cancelledCount: number
+  rescheduledCount: number
   totalClients: number
   revenue: number
 }
 
 const RANGE_OPTIONS = [
-  { value: "today", label: "Hoy", days: 0 },
-  { value: "7", label: "7 días", days: 7 },
-  { value: "15", label: "15 días", days: 15 },
-  { value: "30", label: "30 días", days: 30 },
+  { value: "today", label: "Hoy" },
+  { value: "7", label: "7 días" },
+  { value: "15", label: "15 días" },
+  { value: "30", label: "30 días" },
 ]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_progress: "En curso",
   completed: "Completado",
   cancelled: "Cancelado",
+  rescheduled: "Reprogramado",
 }
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -46,6 +48,7 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   in_progress: "outline",
   completed: "secondary",
   cancelled: "destructive",
+  rescheduled: "outline",
 }
 
 export default function DashboardPage() {
@@ -75,7 +78,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            {range === "today" ? "Resumen del día" : `Últimos ${range} días`}
+            {range === "today" ? "Resumen del día" : `Próximos ${range} días`}
           </p>
         </div>
         <div className="flex gap-1 border rounded-md p-0.5">
@@ -135,6 +138,25 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stats secundarias */}
+      {(data.rescheduledCount > 0 || data.cancelledCount > 0) && (
+        <div className="flex gap-3 flex-wrap">
+          {data.rescheduledCount > 0 && (
+            <div className="flex items-center gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+              <RefreshCw className="h-4 w-4 text-blue-500" />
+              <span className="text-muted-foreground">Reprogramados:</span>
+              <span className="font-semibold">{data.rescheduledCount}</span>
+            </div>
+          )}
+          {data.cancelledCount > 0 && (
+            <div className="flex items-center gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+              <span className="text-muted-foreground">Cancelados:</span>
+              <span className="font-semibold">{data.cancelledCount}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

@@ -78,9 +78,14 @@ function isToday(d: Date) {
   return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear()
 }
 
+function parseLocalDate(dateStr: string): { day: number; month: number; year: number } {
+  const parts = dateStr.split("T")[0].split("-")
+  return { year: parseInt(parts[0]), month: parseInt(parts[1]) - 1, day: parseInt(parts[2]) }
+}
+
 function isSameDay(a: string, b: Date) {
-  const d = new Date(a)
-  return d.getDate() === b.getDate() && d.getMonth() === b.getMonth() && d.getFullYear() === b.getFullYear()
+  const d = parseLocalDate(a)
+  return d.day === b.getDate() && d.month === b.getMonth() && d.year === b.getFullYear()
 }
 
 export function CalendarView() {
@@ -93,21 +98,28 @@ export function CalendarView() {
     fetchCalendarData()
   }, [currentDate, viewMode])
 
+  function toLocalDateStr(d: Date): string {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+  }
+
   async function fetchCalendarData() {
     setLoading(true)
     let start: string, end: string
 
     if (viewMode === "day") {
-      start = currentDate.toISOString().split("T")[0]
+      start = toLocalDateStr(currentDate)
       end = start
     } else if (viewMode === "week") {
       const days = getWeekDays(currentDate)
-      start = days[0].toISOString().split("T")[0]
-      end = days[6].toISOString().split("T")[0]
+      start = toLocalDateStr(days[0])
+      end = toLocalDateStr(days[6])
     } else {
       const days = getMonthDays(currentDate)
-      start = days[0].toISOString().split("T")[0]
-      end = days[days.length - 1].toISOString().split("T")[0]
+      start = toLocalDateStr(days[0])
+      end = toLocalDateStr(days[days.length - 1])
     }
 
     const res = await fetch(`/api/calendar?start=${start}&end=${end}`)
@@ -140,22 +152,22 @@ export function CalendarView() {
           <div key={hour} className="border-b border-r" style={{ height: HOUR_HEIGHT }} />
         ))}
         {dayApts.map((apt) => {
-          const startMin = timeToMinutes(apt.startTime) - dayStart
-          const endMin = timeToMinutes(apt.endTime) - dayStart
-          const top = (startMin / totalMinutes) * gridHeight
-          const height = ((endMin - startMin) / totalMinutes) * gridHeight
-          const serviceColor = apt.services[0]?.service.color || "#6b7280"
+          const aptStartMin = timeToMinutes(apt.startTime) - dayStart - 30
+          const aptEndMin = timeToMinutes(apt.endTime) - dayStart
+          const top = (Math.max(aptStartMin, 0) / totalMinutes) * gridHeight
+          const height = ((aptEndMin - Math.max(aptStartMin, 0)) / totalMinutes) * gridHeight
+          const svcColor = apt.services[0]?.service.color || "#8b5cf6"
           return (
             <div
               key={apt.id}
-              className={`absolute left-0.5 right-0.5 rounded border-l-3 shadow-sm z-20 cursor-pointer ${getStatusColor(apt.status)}`}
-              style={{ top, height: Math.max(height, compact ? 24 : 40), borderLeftColor: serviceColor }}
+              className="absolute left-0.5 right-0.5 rounded-md text-white text-xs p-1.5 z-20 cursor-pointer shadow-sm border border-white/20"
+              style={{ top, height: Math.max(height, compact ? 24 : 40), backgroundColor: svcColor }}
             >
               {!compact && (
-                <div className="p-1.5 text-white text-xs leading-tight">
-                  <div className="font-medium truncate">{apt.client.firstName} {apt.client.lastName}</div>
-                  <div className="opacity-90">{apt.startTime}-{apt.endTime}</div>
+                <div className="p-0.5 text-white text-xs leading-tight">
+                  <div className="font-semibold truncate">{apt.client.firstName} {apt.client.lastName}</div>
                   <div className="opacity-90 truncate">{apt.services.map((s) => s.service.name).join(", ")}</div>
+                  <div className="opacity-80">{apt.startTime} - {apt.endTime}</div>
                 </div>
               )}
             </div>
@@ -180,19 +192,19 @@ export function CalendarView() {
       <div className="space-y-2">
         {HOURS.map((hour) => {
           const hourApts = dayApts.filter((a) => {
-            const h = parseInt(a.startTime.split(":")[0])
-            return h === hour
+            const startMin = timeToMinutes(a.startTime)
+            return startMin >= hour * 60 - 30 && startMin < (hour + 1) * 60
           })
           return (
             <div key={hour} className="flex gap-3">
               <div className="w-14 text-xs text-muted-foreground text-right pt-1 shrink-0">{hour}:00</div>
               <div className="flex-1 min-h-[48px] border-l-2 border-border pl-3 relative">
                 {hourApts.map((apt) => {
-                  const serviceColor = apt.services[0]?.service.color || "#6b7280"
+                  const svcColor = apt.services[0]?.service.color || "#8b5cf6"
                   return (
-                    <div key={apt.id} className="bg-white border rounded-lg p-2 mb-1 shadow-sm" style={{ borderLeftColor: serviceColor, borderLeftWidth: 4 }}>
-                      <div className="font-medium text-sm">{apt.client.firstName} {apt.client.lastName}</div>
-                      <div className="text-xs text-muted-foreground">{apt.startTime}-{apt.endTime} | {apt.services.map((s) => s.service.name).join(", ")}</div>
+                    <div key={apt.id} className="rounded-lg p-2 mb-1 shadow-sm text-white" style={{ backgroundColor: svcColor }}>
+                      <div className="font-semibold text-sm">{apt.client.firstName} {apt.client.lastName}</div>
+                      <div className="text-xs opacity-90">{apt.startTime} - {apt.endTime} | {apt.services.map((s) => s.service.name).join(", ")}</div>
                     </div>
                   )
                 })}
@@ -284,18 +296,20 @@ export function CalendarView() {
                     <div key={hour} className="border-b" style={{ height: HOUR_HEIGHT }} />
                   ))}
                   {appointments.filter((a) => isSameDay(a.date, day)).map((apt) => {
-                    const startMin = timeToMinutes(apt.startTime) - dayStart
-                    const endMin = timeToMinutes(apt.endTime) - dayStart
-                    const top = (startMin / totalMinutes) * gridHeight
-                    const height = ((endMin - startMin) / totalMinutes) * gridHeight
+                    const aptStartMin = timeToMinutes(apt.startTime) - dayStart - 30
+                    const aptEndMin = timeToMinutes(apt.endTime) - dayStart
+                    const top = (Math.max(aptStartMin, 0) / totalMinutes) * gridHeight
+                    const height = ((aptEndMin - Math.max(aptStartMin, 0)) / totalMinutes) * gridHeight
+                    const svcColor = apt.services[0]?.service.color || "#8b5cf6"
                     return (
                       <div
                         key={apt.id}
-                        className={`absolute left-0.5 right-0.5 rounded border-l-3 text-white text-[10px] p-1 z-20 ${getStatusColor(apt.status)}`}
-                        style={{ top, height: Math.max(height, 24), borderLeftColor: apt.services[0]?.service.color || "#6b7280" }}
+                        className="absolute left-0.5 right-0.5 rounded-md text-white text-[10px] p-1.5 z-20 cursor-pointer shadow-sm border border-white/20"
+                        style={{ top, height: Math.max(height, 24), backgroundColor: svcColor }}
                       >
-                        <div className="font-medium truncate">{apt.client.firstName}</div>
-                        {height > 30 && <div className="opacity-90">{apt.startTime}</div>}
+                        <div className="font-semibold truncate">{apt.client.firstName} {apt.client.lastName}</div>
+                        {height > 28 && <div className="opacity-90 truncate">{apt.services.map((s) => s.service.name).join(", ")}</div>}
+                        {height > 42 && <div className="opacity-80">{apt.startTime} - {apt.endTime}</div>}
                       </div>
                     )
                   })}
@@ -331,7 +345,7 @@ export function CalendarView() {
                         className="text-[10px] leading-tight rounded px-1 py-0.5 truncate text-white"
                         style={{ backgroundColor: apt.services[0]?.service.color || "#6b7280" }}
                       >
-                        {apt.startTime} {apt.client.firstName}
+                        {apt.startTime} {apt.client.firstName} {apt.client.lastName}
                       </div>
                     ))}
                     {dayApts.length > 3 && (

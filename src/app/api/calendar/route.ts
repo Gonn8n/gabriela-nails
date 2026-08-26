@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
+
+function getLocalDateStr(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
 
 export async function GET(request: Request) {
   try {
@@ -14,32 +21,23 @@ export async function GET(request: Request) {
       )
     }
 
-    const endDate = new Date(end)
-    endDate.setHours(23, 59, 59, 999)
+    const { data: appointments } = await supabase
+      .from("Appointment")
+      .select("*, client:Client(id, firstName, lastName, phone), services:AppointmentService(id, service:Service(name, color))")
+      .gte("date", start)
+      .lte("date", end)
+      .neq("status", "cancelled")
+      .order("startTime", { ascending: true })
 
-    const appointments = db.prepare(`
-      SELECT a.*, 
-        c.firstName as clientFirstName, c.lastName as clientLastName, c.phone as clientPhone
-      FROM Appointment a
-      JOIN Client c ON a.clientId = c.id
-      WHERE a.date >= ? AND a.date <= ? AND a.status != 'cancelled'
-      ORDER BY a.startTime ASC
-    `).all(start, endDate.toISOString()) as Record<string, unknown>[]
-
-    const blockedSlots = db.prepare(
-      "SELECT * FROM BlockedSlot WHERE date >= ? AND date <= ? ORDER BY startTime ASC"
-    ).all(start, endDate.toISOString()) as Record<string, unknown>[]
-
-    // Get services for each appointment
-    const servicesStmt = db.prepare(`
-      SELECT s.name, s.color, s.price, s.duration
-      FROM AppointmentService aps
-      JOIN Service s ON aps.serviceId = s.id
-      WHERE aps.appointmentId = ?
-    `)
+    const { data: blockedSlots } = await supabase
+      .from("BlockedSlot")
+      .select("*")
+      .gte("date", start)
+      .lte("date", end)
+      .order("startTime", { ascending: true })
 
     const result = {
-      appointments: appointments.map((apt: Record<string, unknown>) => ({
+      appointments: (appointments || []).map((apt) => ({
         id: apt.id,
         identifier: apt.identifier,
         date: apt.date,
@@ -47,19 +45,10 @@ export async function GET(request: Request) {
         endTime: apt.endTime,
         status: apt.status,
         totalPrice: apt.totalPrice,
-        client: {
-          firstName: apt.clientFirstName,
-          lastName: apt.clientLastName,
-          phone: apt.clientPhone,
-        },
-        services: (servicesStmt.all(apt.id) as Record<string, unknown>[]).map((s) => ({
-          service: {
-            name: s.name,
-            color: s.color,
-          },
-        })),
+        client: apt.client,
+        services: apt.services,
       })),
-      blockedSlots,
+      blockedSlots: blockedSlots || [],
     }
 
     return NextResponse.json(result)

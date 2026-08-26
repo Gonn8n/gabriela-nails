@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 import { Sidebar } from "@/components/sidebar"
 
 async function getUser() {
@@ -12,7 +12,11 @@ async function getUser() {
   }
 
   try {
-    const sessionData = db.prepare("SELECT value FROM Settings WHERE key = ?").get(`session:${session}`) as { value: string } | undefined
+    const { data: sessionData } = await supabase
+      .from("Settings")
+      .select("value")
+      .eq("key", `session:${session}`)
+      .single()
 
     if (!sessionData) {
       return null
@@ -21,11 +25,15 @@ async function getUser() {
     const parsed = JSON.parse(sessionData.value)
 
     if (new Date(parsed.expiresAt) < new Date()) {
-      db.prepare("DELETE FROM Settings WHERE key = ?").run(`session:${session}`)
+      await supabase.from("Settings").delete().eq("key", `session:${session}`)
       return null
     }
 
-    const user = db.prepare("SELECT id, email, name FROM User WHERE id = ?").get(parsed.userId) as { id: string; email: string; name: string } | undefined
+    const { data: user } = await supabase
+      .from("User")
+      .select("id, email, name")
+      .eq("id", parsed.userId)
+      .single()
 
     return user || null
   } catch {
@@ -47,7 +55,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       <Sidebar user={{ email: user.email }} />
-      <main className="flex-1 pt-14 lg:pt-0 px-4 py-6 lg:px-8 lg:py-8 bg-pink-50/50 min-h-screen">
+      <main className="flex-1 px-5 pb-24 pt-6 lg:px-10 lg:py-8 lg:pb-6 bg-pink-50/50 min-h-screen" style={{ paddingTop: "max(calc(var(--spacing) * 18), 1.5rem)" }}>
         {children}
       </main>
     </div>

@@ -17,7 +17,6 @@ export const db = globalForDb.db ?? createDb()
 
 if (process.env.NODE_ENV !== "production") globalForDb.db = db
 
-// Typed helpers
 export function queryAll<T>(sql: string, ...params: unknown[]): T[] {
   return db.prepare(sql).all(...params) as T[]
 }

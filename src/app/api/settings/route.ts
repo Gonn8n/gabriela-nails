@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/db"
+import { supabase } from "@/lib/supabase"
 
 const DEFAULTS: Record<string, string> = {
   workingHoursStart: "09:00",
   workingHoursEnd: "19:00",
   slotDuration: "30",
   bookingWindowDays: "30",
-  cancellationHours: "2",
+  cancellationHours: "3",
   breakStart: "12:00",
   breakEnd: "13:00",
   workingDays: "1,2,3,4,5,6",
@@ -14,9 +14,13 @@ const DEFAULTS: Record<string, string> = {
 
 export async function GET() {
   try {
-    const rows = db.prepare("SELECT key, value FROM Settings WHERE key LIKE 'setting:%'").all() as { key: string; value: string }[]
+    const { data: rows } = await supabase
+      .from("Settings")
+      .select("key, value")
+      .like("key", "setting:%")
+
     const settings: Record<string, unknown> = {}
-    for (const row of rows) {
+    for (const row of rows || []) {
       const k = row.key.replace("setting:", "")
       if (k === "workingDays") {
         settings[k] = row.value.split(",").map(Number)
@@ -34,11 +38,27 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const upsert = db.prepare("INSERT INTO Settings (id, key, value) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
 
     for (const [key, value] of Object.entries(body)) {
       const val = Array.isArray(value) ? value.join(",") : String(value)
-      upsert.run(crypto.randomUUID(), `setting:${key}`, val)
+      const fullKey = `setting:${key}`
+
+      const { data: existing } = await supabase
+        .from("Settings")
+        .select("id")
+        .eq("key", fullKey)
+        .single()
+
+      if (existing) {
+        await supabase
+          .from("Settings")
+          .update({ value: val })
+          .eq("key", fullKey)
+      } else {
+        await supabase
+          .from("Settings")
+          .insert({ id: crypto.randomUUID(), key: fullKey, value: val })
+      }
     }
 
     return NextResponse.json({ ok: true })

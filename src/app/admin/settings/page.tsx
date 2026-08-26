@@ -38,7 +38,7 @@ const defaultSettings: Settings = {
   workingHoursEnd: "19:00",
   slotDuration: 30,
   bookingWindowDays: 30,
-  cancellationHours: 2,
+  cancellationHours: 3,
   breakStart: "12:00",
   breakEnd: "13:00",
   workingDays: [1, 2, 3, 4, 5, 6], // Mon-Sat by default
@@ -219,7 +219,7 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="cancellation">Antelación cancelación (hs)</Label>
               <Input id="cancellation" type="number" value={settings.cancellationHours} onChange={(e) => setSettings({ ...settings, cancellationHours: parseInt(e.target.value) || 2 })} />
-              <p className="text-xs text-muted-foreground">Horas mínimas antes para cancelar sin penalización</p>
+              <p className="text-xs text-muted-foreground">Horas mínimas antes para cancelar o reprogramar un turno</p>
             </div>
           </div>
         </CardContent>

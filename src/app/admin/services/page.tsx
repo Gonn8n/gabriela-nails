@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Plus, Pencil, Trash2 } from "lucide-react"
-import { NailIcon } from "@/components/icons"
 
 interface Service {
   id: string
@@ -21,7 +20,6 @@ interface Service {
   duration: number
   price: number
   color: string
-  category: string | null
 }
 
 export default function ServicesPage() {
@@ -35,7 +33,6 @@ export default function ServicesPage() {
     duration: "",
     price: "",
     color: "#e91e63",
-    category: "",
   })
 
   useEffect(() => {
@@ -51,7 +48,7 @@ export default function ServicesPage() {
 
   function openCreate() {
     setEditingService(null)
-    setForm({ name: "", description: "", duration: "", price: "", color: "#e91e63", category: "" })
+    setForm({ name: "", description: "", duration: "", price: "", color: "#e91e63" })
     setDialogOpen(true)
   }
 
@@ -63,7 +60,6 @@ export default function ServicesPage() {
       duration: service.duration.toString(),
       price: service.price.toString(),
       color: service.color,
-      category: service.category || "",
     })
     setDialogOpen(true)
   }
@@ -138,11 +134,8 @@ export default function ServicesPage() {
                 )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{service.duration} min</span>
-                  <span className="font-semibold">${service.price.toFixed(2)}</span>
+                  <span className="font-semibold">${service.price.toFixed(0)}</span>
                 </div>
-                {service.category && (
-                  <span className="inline-block mt-2 text-xs bg-muted px-2 py-1 rounded">{service.category}</span>
-                )}
               </CardContent>
             </Card>
           ))}
@@ -170,20 +163,14 @@ export default function ServicesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="price">Precio *</Label>
-                <Input id="price" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="2500" required />
+                <Input id="price" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="8000" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="color">Color</Label>
-                <div className="flex gap-2">
-                  <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-10 h-10 rounded cursor-pointer border" />
-                  <Input id="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="#e91e63" className="flex-1" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoría</Label>
-                <Input id="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Ej: Básico" />
+            <div className="space-y-2">
+              <Label htmlFor="color">Color</Label>
+              <div className="flex gap-2">
+                <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} className="w-10 h-10 rounded cursor-pointer border" />
+                <Input id="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="#e91e63" className="flex-1" />
               </div>
             </div>
             <Button type="submit" className="w-full">{editingService ? "Guardar Cambios" : "Crear Servicio"}</Button>
