@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       .from("Appointment")
       .select("*, client:Client(id, firstName, lastName, dni, phone), services:AppointmentService(id, service:Service(name, color, price, duration))")
       .order("date", { ascending: false })
-      .order("startTime", { ascending: true })
+      .order("startTime", { ascending: false })
 
     if (status && status !== "all") {
       query = query.eq("status", status)
