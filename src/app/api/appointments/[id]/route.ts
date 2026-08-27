@@ -47,7 +47,8 @@ export async function PUT(
     return NextResponse.json(appointment)
   } catch (error) {
     console.error("API Error:", error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    const message = error instanceof Error ? error.message : typeof error === "object" ? JSON.stringify(error) : String(error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
