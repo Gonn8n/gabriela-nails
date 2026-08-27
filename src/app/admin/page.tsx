@@ -67,9 +67,9 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Row 1: Turnos, Reservados, Cobrado */}
+      {/* Row 1: Métricas principales */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-        <Card>
+        <Card className="col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Turnos</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -77,16 +77,6 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{data.upcomingCount + data.completedCount}</div>
             <p className="text-xs text-muted-foreground">{data.completedCount} finalizados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Reservados</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{data.upcomingCount}</div>
-            <p className="text-xs text-muted-foreground">agendados, pendientes</p>
           </CardContent>
         </Card>
         <Card>
@@ -99,10 +89,30 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">turnos cobrados</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Facturación</CardTitle>
+            <DollarSign className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">${data.revenue.toLocaleString("es-AR")}</div>
+            <p className="text-xs text-muted-foreground">cobrados</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Row 2: Pendiente, Clientes, Facturación */}
+      {/* Row 2: Métricas secundarias */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Reservados</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{data.upcomingCount}</div>
+            <p className="text-xs text-muted-foreground">agendados, pendientes</p>
+          </CardContent>
+        </Card>
         <Card className={data.unpaidCompletedCount > 0 ? "border-amber-300 bg-amber-50/30" : ""}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Pendiente de cobro</CardTitle>
@@ -115,7 +125,7 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">finalizados sin cobrar</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="col-span-2 lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Clientes</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -123,16 +133,6 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{data.totalClients}</div>
             <p className="text-xs text-muted-foreground">registrados</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Facturación</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">${data.revenue.toLocaleString("es-AR")}</div>
-            <p className="text-xs text-muted-foreground">cobrados</p>
           </CardContent>
         </Card>
       </div>
