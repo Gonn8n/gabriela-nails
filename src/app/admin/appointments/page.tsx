@@ -350,6 +350,16 @@ export default function AppointmentsPage() {
                           <CircleDollarSign className="h-5 w-5" />
                         </button>
                       )}
+                      {apt.status === "completed" && apt.paymentMethod === "transfer" && !apt.paid && (
+                        <button
+                          onClick={() => togglePaid(apt.id, false)}
+                          className="shrink-0 px-2 py-1.5 rounded-lg border bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors text-[10px] font-medium flex items-center gap-1"
+                          title="Confirmar pago por transferencia"
+                        >
+                          <CircleDollarSign className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Confirmar</span>
+                        </button>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-gray-900 truncate">
                           {apt.client.firstName} {apt.client.lastName}
