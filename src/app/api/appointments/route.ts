@@ -32,6 +32,8 @@ export async function GET(request: Request) {
       status: apt.status,
       totalPrice: apt.totalPrice,
       notes: apt.notes,
+      cancelReason: apt.cancelReason,
+      paymentMethod: apt.paymentMethod,
       client: apt.client,
       services: apt.services,
     }))

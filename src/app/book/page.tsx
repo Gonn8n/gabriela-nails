@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, Loader2, ArrowLeft, ArrowRight, CalendarDays, Clock, AlertTriangle, XCircle } from "lucide-react"
+import { CheckCircle, Loader2, ArrowLeft, ArrowRight, CalendarDays, Clock, AlertTriangle, XCircle, Banknote, ArrowRightLeft, Copy, Check } from "lucide-react"
 import { BookingCalendar } from "@/components/booking-calendar"
 
 interface Service {
@@ -36,6 +36,7 @@ interface Appointment {
   endTime: string
   status: string
   totalPrice: number
+  paymentMethod: string | null
   services: { name: string; color: string; price: number; duration: number }[]
 }
 
@@ -66,6 +67,11 @@ export default function BookingPage() {
 
   // Cancel
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null)
+  const [cancelReason, setCancelReason] = useState("")
+
+  // Payment
+  const [paymentMethod, setPaymentMethod] = useState("")
+  const [aliasCopied, setAliasCopied] = useState(false)
 
   // Reschedule
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null)
@@ -181,7 +187,7 @@ export default function BookingPage() {
     const res = await fetch("/api/book", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dni, ...formData }),
+      body: JSON.stringify({ dni, ...formData, paymentMethod }),
     })
 
     const data = await res.json()
@@ -204,7 +210,7 @@ export default function BookingPage() {
     const res = await fetch("/api/book/cancel", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appointmentId: cancelTarget.id, reason: "Cancelado por el cliente" }),
+      body: JSON.stringify({ appointmentId: cancelTarget.id, reason: cancelReason || "Cancelado por el cliente" }),
     })
 
     const data = await res.json()
@@ -217,6 +223,7 @@ export default function BookingPage() {
 
     setUpcomingAppointments((prev) => prev.filter((a) => a.id !== cancelTarget.id))
     setCancelTarget(null)
+    setCancelReason("")
     setLoading(false)
     setStep("cancel-success")
   }
@@ -317,7 +324,11 @@ export default function BookingPage() {
                 <Input
                   placeholder="Ingresá tu DNI"
                   value={dni}
-                  onChange={(e) => setDni(e.target.value)}
+                  onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 8); setDni(v); }}
+                  onFocus={() => { if (typeof window !== "undefined" && window.history) { window.history.pushState(null, "", window.location.href) } }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
                   required
                 />
                 <Button type="submit" className="w-full" disabled={loading || !dni}>
@@ -377,6 +388,17 @@ export default function BookingPage() {
                         </span>
                       ))}
                     </div>
+
+                    {apt.paymentMethod && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {apt.paymentMethod === "cash" ? (
+                          <Banknote className="h-3.5 w-3.5 text-green-600" />
+                        ) : (
+                          <ArrowRightLeft className="h-3.5 w-3.5 text-blue-600" />
+                        )}
+                        {apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
+                      </div>
+                    )}
 
                     {canModify ? (
                       <div className="flex gap-2">
@@ -666,11 +688,84 @@ export default function BookingPage() {
                 ℹ️ Podés cancelar o reprogramar tu turno con hasta {cancellationHours} horas de anticipación.
               </div>
 
+              {/* Forma de pago */}
+              <div className="space-y-2">
+                <Label className="text-sm">Forma de pago *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("cash")}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                      paymentMethod === "cash"
+                        ? "border-pink-400 bg-pink-50 text-pink-700"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Banknote className="h-4 w-4" />
+                    Efectivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("transfer")}
+                    className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                      paymentMethod === "transfer"
+                        ? "border-pink-400 bg-pink-50 text-pink-700"
+                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Transferencia
+                  </button>
+                </div>
+
+                {paymentMethod === "transfer" && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2 text-sm">
+                    <p className="font-medium text-blue-800">Datos para transferir</p>
+                    <div className="space-y-1.5 text-blue-700">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-blue-600">Alias</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-semibold text-blue-900">gabriela.c.24</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText("gabriela.c.24")
+                              setAliasCopied(true)
+                              setTimeout(() => setAliasCopied(false), 2000)
+                            }}
+                            className="p-1 rounded-md hover:bg-blue-100 transition-colors"
+                            title="Copiar alias"
+                          >
+                            {aliasCopied ? (
+                              <Check className="h-3.5 w-3.5 text-green-600" />
+                            ) : (
+                              <Copy className="h-3.5 w-3.5 text-blue-600" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-blue-600">Titular</span>
+                        <span className="text-blue-900">Gabriela Analia Carabajal</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-blue-600">CUIT</span>
+                        <span className="text-blue-900">27-29376460-9</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-blue-600">Banco</span>
+                        <span className="text-blue-900">Galicia</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setStep("datetime")} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-1" /> Volver
                 </Button>
-                <Button onClick={handleFinalSubmit} disabled={loading} className="flex-1 bg-pink-500 hover:bg-pink-600">
+                <Button onClick={handleFinalSubmit} disabled={loading || !paymentMethod} className="flex-1 bg-pink-500 hover:bg-pink-600">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Confirmar Turno
                 </Button>
@@ -719,8 +814,17 @@ export default function BookingPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Motivo de la cancelación (opcional)</Label>
+                <Input
+                  placeholder="Ej: cambió mi horario, me surgió otro compromiso..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => { setCancelTarget(null); setStep("my-appointments"); }} className="flex-1">
+                <Button variant="outline" onClick={() => { setCancelTarget(null); setCancelReason(""); setStep("my-appointments"); }} className="flex-1">
                   Volver
                 </Button>
                 <Button variant="destructive" onClick={handleCancel} disabled={loading} className="flex-1">

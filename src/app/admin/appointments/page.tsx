@@ -27,6 +27,8 @@ import {
   RefreshCw,
   MessageSquare,
   Calendar,
+  Banknote,
+  ArrowRightLeft,
 } from "lucide-react"
 
 interface Client {
@@ -53,6 +55,8 @@ interface Appointment {
   status: string
   totalPrice: number
   notes: string | null
+  cancelReason: string | null
+  paymentMethod: string | null
   client: Client
   services: { service: Service }[]
 }
@@ -312,6 +316,27 @@ export default function AppointmentsPage() {
                       <MessageSquare className="h-3 w-3 inline mr-1 opacity-50" />
                       {apt.notes}
                     </button>
+                  )}
+
+                  {/* Fila 2b: motivo de cancelación — solo si cancelado */}
+                  {apt.status === "cancelled" && apt.cancelReason && (
+                    <div className="w-full text-xs text-red-600/80 bg-red-50/60 border border-red-200/40 rounded-md px-2.5 py-1.5 mb-2 truncate">
+                      Motivo: {apt.cancelReason}
+                    </div>
+                  )}
+
+                  {/* Fila 2c: forma de pago */}
+                  {apt.paymentMethod && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
+                      {apt.paymentMethod === "cash" ? (
+                        <Banknote className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <ArrowRightLeft className="h-3.5 w-3.5 text-blue-600" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
+                      </span>
+                    </div>
                   )}
 
                   {/* Fila 3: botones de estado — grid 4 cols */}

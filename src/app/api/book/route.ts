@@ -42,7 +42,13 @@ export async function GET(request: Request) {
       endTime: apt.endTime,
       status: apt.status,
       totalPrice: apt.totalPrice,
-      services: apt.services,
+      paymentMethod: apt.paymentMethod,
+      services: (apt.services || []).map((s: { service: { name: string; color: string; price: number; duration: number } }) => ({
+        name: s.service.name,
+        color: s.service.color,
+        price: s.service.price,
+        duration: s.service.duration,
+      })),
     }))
 
     return NextResponse.json({ client, appointments: result })
@@ -56,7 +62,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { dni, firstName, lastName, email, phone, birthDate, serviceIds, date, startTime } = body
+    const { dni, firstName, lastName, email, phone, birthDate, serviceIds, date, startTime, paymentMethod } = body
 
     if (!dni || !firstName || !lastName || !serviceIds?.length || !date || !startTime) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
@@ -172,6 +178,7 @@ export async function POST(request: Request) {
         endTime,
         totalPrice,
         status: "booked",
+        paymentMethod: paymentMethod || null,
         createdAt: new Date().toISOString(),
       })
     if (insertAptError) throw insertAptError

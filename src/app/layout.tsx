@@ -11,6 +11,7 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: "Gabriela Nails",
   description: "Agendamiento de turnos para manicura",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

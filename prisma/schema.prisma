@@ -55,6 +55,7 @@ model Appointment {
   calendarEvent Boolean  @default(false)
   cancelledAt      DateTime?
   cancelReason     String?
+  paymentMethod    String?
   rescheduledFrom  String?
   createdAt        DateTime @default(now())
   client        Client   @relation(fields: [clientId], references: [id])
