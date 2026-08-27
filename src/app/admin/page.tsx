@@ -6,26 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Users, DollarSign, Clock, RefreshCw } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
-
-interface DashboardData {
-  todayAppointments: {
-    id: string
-    identifier: string
-    date: string
-    startTime: string
-    endTime: string
-    status: string
-    totalPrice: number
-    client: { firstName: string; lastName: string }
-    services: { service: { name: string; color: string } }[]
-  }[]
-  upcomingCount: number
-  completedCount: number
-  cancelledCount: number
-  rescheduledCount: number
-  totalClients: number
-  revenue: number
-}
+import { useDashboardCache } from "@/hooks/use-dashboard-cache"
 
 const RANGE_OPTIONS = [
   { value: "today", label: "Hoy" },
@@ -54,20 +35,11 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
 
 export default function DashboardPage() {
   const [range, setRange] = useState("today")
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  async function fetchData() {
-    setLoading(true)
-    const res = await fetch(`/api/dashboard?range=${range}`)
-    const json = await res.json()
-    setData(json)
-    setLoading(false)
-  }
+  const { data, loading, fetchData } = useDashboardCache()
 
   useEffect(() => {
-    fetchData()
-  }, [range])
+    fetchData(range)
+  }, [range, fetchData])
 
   if (loading || !data) {
     return <div className="text-center py-8">Cargando dashboard...</div>
