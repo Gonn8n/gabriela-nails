@@ -34,6 +34,7 @@ export async function GET(request: Request) {
       notes: apt.notes,
       cancelReason: apt.cancelReason,
       paymentMethod: apt.paymentMethod,
+      paid: apt.paid ?? false,
       client: apt.client,
       services: apt.services,
     }))

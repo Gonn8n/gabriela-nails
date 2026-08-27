@@ -29,7 +29,6 @@ export async function GET(request: Request) {
       endDate = getLocalDateStr(end)
     }
 
-    // Query 1: Todas las appointments del rango (una sola query)
     const { data: appointments } = await supabase
       .from("Appointment")
       .select("*, client:Client(id, firstName, lastName), services:AppointmentService(id, service:Service(name, color))")
@@ -38,16 +37,16 @@ export async function GET(request: Request) {
       .order("date", { ascending: false })
       .order("startTime", { ascending: true })
 
-    // Query 2: Total de clientes
     const { count: totalClients } = await supabase
       .from("Client")
       .select("*", { count: "exact", head: true })
 
-    // Calcular todo en memoria a partir de la query 1
     let upcomingCount = 0
     let completedCount = 0
     let cancelledCount = 0
     let rescheduledCount = 0
+    let paidCount = 0
+    let unpaidCompletedCount = 0
     let revenue = 0
     const formatted: typeof appointments = []
 
@@ -58,9 +57,13 @@ export async function GET(request: Request) {
         if (apt.status === "booked" || apt.status === "confirmed") upcomingCount++
         if (apt.status === "completed") {
           completedCount++
-          revenue += apt.totalPrice || 0
+          if (apt.paid) {
+            paidCount++
+            revenue += apt.totalPrice || 0
+          } else {
+            unpaidCompletedCount++
+          }
         }
-        if (apt.status === "booked" || apt.status === "confirmed") revenue += apt.totalPrice || 0
         if (apt.rescheduledFrom) rescheduledCount++
         formatted.push({
           id: apt.id,
@@ -70,6 +73,7 @@ export async function GET(request: Request) {
           endTime: apt.endTime,
           status: apt.status,
           totalPrice: apt.totalPrice,
+          paid: apt.paid ?? false,
           client: apt.client,
           services: apt.services,
         })
@@ -82,6 +86,8 @@ export async function GET(request: Request) {
       completedCount,
       cancelledCount,
       rescheduledCount,
+      paidCount,
+      unpaidCompletedCount,
       totalClients: totalClients || 0,
       revenue,
     })

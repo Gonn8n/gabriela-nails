@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, notes, paymentMethod } = body
+    const { status, notes, paymentMethod, paid } = body
 
     const updateData: Record<string, unknown> = {}
 
@@ -25,6 +25,10 @@ export async function PUT(
 
     if (paymentMethod !== undefined) {
       updateData.paymentMethod = paymentMethod
+    }
+
+    if (paid !== undefined) {
+      updateData.paid = paid
     }
 
     await supabase

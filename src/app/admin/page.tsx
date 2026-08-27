@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, DollarSign, Clock, RefreshCw } from "lucide-react"
+import { Calendar, Users, DollarSign, Clock, RefreshCw, CircleDollarSign, AlertTriangle } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { useDashboardCache } from "@/hooks/use-dashboard-cache"
 
@@ -67,7 +67,8 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      {/* Row 1: Turnos, Reservados, Cobrado */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Turnos</CardTitle>
@@ -75,17 +76,43 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.upcomingCount + data.completedCount}</div>
-            <p className="text-xs text-muted-foreground">{data.completedCount} completados</p>
+            <p className="text-xs text-muted-foreground">{data.completedCount} finalizados</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Pendientes</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-medium">Reservados</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.upcomingCount}</div>
-            <p className="text-xs text-muted-foreground">{data.cancelledCount} cancelados</p>
+            <div className="text-2xl font-bold text-blue-600">{data.upcomingCount}</div>
+            <p className="text-xs text-muted-foreground">agendados, pendientes</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Cobrado</CardTitle>
+            <CircleDollarSign className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{data.paidCount}</div>
+            <p className="text-xs text-muted-foreground">turnos cobrados</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 2: Pendiente, Clientes, Facturación */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <Card className={data.unpaidCompletedCount > 0 ? "border-amber-300 bg-amber-50/30" : ""}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-medium">Pendiente de cobro</CardTitle>
+            <AlertTriangle className={`h-4 w-4 ${data.unpaidCompletedCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${data.unpaidCompletedCount > 0 ? "text-amber-600" : ""}`}>
+              {data.unpaidCompletedCount}
+            </div>
+            <p className="text-xs text-muted-foreground">finalizados sin cobrar</p>
           </CardContent>
         </Card>
         <Card>
@@ -101,11 +128,11 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Facturación</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${data.revenue.toFixed(0)}</div>
-            <p className="text-xs text-muted-foreground">completados</p>
+            <div className="text-2xl font-bold text-emerald-600">${data.revenue.toLocaleString("es-AR")}</div>
+            <p className="text-xs text-muted-foreground">cobrados</p>
           </CardContent>
         </Card>
       </div>
@@ -158,6 +185,9 @@ export default function DashboardPage() {
                     <Badge variant={STATUS_VARIANTS[apt.status] || "default"} className="text-[10px]">
                       {STATUS_LABELS[apt.status] || apt.status}
                     </Badge>
+                    {apt.status === "completed" && (
+                      <CircleDollarSign className={`h-4 w-4 ${apt.paid ? "text-emerald-500" : "text-amber-400"}`} />
+                    )}
                     <span className="text-sm font-medium">${apt.totalPrice.toFixed(0)}</span>
                   </div>
                 </div>

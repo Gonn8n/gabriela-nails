@@ -29,6 +29,7 @@ import {
   Calendar,
   Banknote,
   ArrowRightLeft,
+  CircleDollarSign,
 } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
@@ -60,6 +61,7 @@ interface Appointment {
   notes: string | null
   cancelReason: string | null
   paymentMethod: string | null
+  paid: boolean
   client: Client
   services: { service: Service }[]
 }
@@ -89,6 +91,7 @@ const FILTER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "booked", label: "Reservados" },
   { value: "completed", label: "Finalizados" },
+  { value: "unpaid", label: "Sin cobrar" },
   { value: "cancelled", label: "Cancelados" },
   { value: "rescheduled", label: "Reprogramados" },
 ]
@@ -125,7 +128,7 @@ export default function AppointmentsPage() {
   async function fetchData() {
     const params = new URLSearchParams()
     if (debouncedSearch) params.set("search", debouncedSearch)
-    if (statusFilter !== "all") params.set("status", statusFilter)
+    if (statusFilter !== "all" && statusFilter !== "unpaid") params.set("status", statusFilter)
 
     const [aptRes, cliRes, srvRes] = await Promise.all([
       fetch(`/api/appointments?${params}`),
@@ -185,6 +188,20 @@ export default function AppointmentsPage() {
       toast.add({ type: "success", title: "Estado actualizado" })
     } else {
       toast.add({ type: "error", title: "Error", description: "No se pudo actualizar el estado." })
+    }
+    fetchData()
+  }
+
+  async function togglePaid(id: string, currentPaid: boolean) {
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paid: !currentPaid }),
+    })
+    if (res.ok) {
+      toast.add({ type: "success", title: currentPaid ? "Marcado como no cobrado" : "Marcado como cobrado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo actualizar el cobro." })
     }
     fetchData()
   }
@@ -289,7 +306,9 @@ export default function AppointmentsPage() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {appointments.map((apt) => {
+          {appointments
+            .filter((apt) => statusFilter === "unpaid" ? apt.status === "completed" && !apt.paid : true)
+            .map((apt) => {
             const cardStyle = STATUS_CARD[apt.status] || STATUS_CARD.booked
             const isActive = (v: string) => apt.status === v
             return (
@@ -316,6 +335,20 @@ export default function AppointmentsPage() {
                             <ArrowRightLeft className="h-5 w-5" />
                           )}
                         </div>
+                      )}
+                      {apt.status === "completed" && (
+                        <button
+                          onClick={() => togglePaid(apt.id, apt.paid)}
+                          className={`shrink-0 p-1.5 rounded-lg border transition-colors ${
+                            apt.paid
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+                              : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
+                          }`}
+                          title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
+                          aria-label={apt.paid ? "Marcar como no cobrado" : "Marcar como cobrado"}
+                        >
+                          <CircleDollarSign className="h-5 w-5" />
+                        </button>
                       )}
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-gray-900 truncate">
