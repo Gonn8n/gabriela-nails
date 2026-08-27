@@ -8,12 +8,11 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { dni, firstName, lastName, email, phone, birthDate } = body
+    const { firstName, lastName, email, phone, birthDate } = body
 
     await supabase
       .from("Client")
       .update({
-        dni,
         firstName,
         lastName,
         email: email || null,

@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-// GET: Buscar cliente por DNI + turnos próximos
+// GET: Buscar cliente por teléfono + turnos próximos
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const dni = searchParams.get("dni")
+    const phone = searchParams.get("phone")
 
-    if (!dni) {
-      return NextResponse.json({ error: "DNI es requerido" }, { status: 400 })
+    if (!phone) {
+      return NextResponse.json({ error: "Teléfono es requerido" }, { status: 400 })
     }
 
     const { data: client } = await supabase
       .from("Client")
       .select("*")
-      .eq("dni", dni)
+      .eq("phone", phone)
       .single()
 
     if (!client) {
@@ -42,7 +42,6 @@ export async function GET(request: Request) {
       endTime: apt.endTime,
       status: apt.status,
       totalPrice: apt.totalPrice,
-      paymentMethod: apt.paymentMethod,
       services: (apt.services || []).map((s: { service: { name: string; color: string; price: number; duration: number } }) => ({
         name: s.service.name,
         color: s.service.color,
@@ -62,9 +61,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { dni, firstName, lastName, email, phone, birthDate, serviceIds, date, startTime, paymentMethod } = body
+    const { phone, firstName, lastName, email, birthDate, serviceIds, date, startTime, paymentMethod } = body
 
-    if (!dni || !firstName || !lastName || !serviceIds?.length || !date || !startTime) {
+    if (!phone || !firstName || !lastName || !serviceIds?.length || !date || !startTime) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 })
     }
 
@@ -83,7 +82,7 @@ export async function POST(request: Request) {
     let { data: client } = await supabase
       .from("Client")
       .select("*")
-      .eq("dni", dni)
+      .eq("phone", phone)
       .single()
 
     if (!client) {
@@ -92,11 +91,10 @@ export async function POST(request: Request) {
         .from("Client")
         .insert({
           id: clientId,
-          dni,
           firstName,
           lastName,
           email: email || null,
-          phone: phone || null,
+          phone,
           birthDate: birthDate || null,
         })
       if (insertError) throw insertError

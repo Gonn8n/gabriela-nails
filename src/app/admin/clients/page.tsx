@@ -18,7 +18,6 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
 interface Client {
   id: string
-  dni: string
   firstName: string
   lastName: string
   email: string | null
@@ -34,7 +33,6 @@ export default function ClientsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [form, setForm] = useState({
-    dni: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -61,14 +59,13 @@ export default function ClientsPage() {
 
   function openCreate() {
     setEditingClient(null)
-    setForm({ dni: "", firstName: "", lastName: "", email: "", phone: "", birthDate: "" })
+    setForm({ firstName: "", lastName: "", email: "", phone: "", birthDate: "" })
     setDialogOpen(true)
   }
 
   function openEdit(client: Client) {
     setEditingClient(client)
     setForm({
-      dni: client.dni,
       firstName: client.firstName,
       lastName: client.lastName,
       email: client.email || "",
@@ -94,7 +91,8 @@ export default function ClientsPage() {
       fetchClients()
       toast.add({ type: "success", title: editingClient ? "Cliente actualizado" : "Cliente creado" })
     } else {
-      toast.add({ type: "error", title: "Error", description: "No se pudo guardar el cliente." })
+      const data = await res.json()
+      toast.add({ type: "error", title: "Error", description: data.error || "No se pudo guardar el cliente." })
     }
   }
 
@@ -129,7 +127,7 @@ export default function ClientsPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar nombre, DNI, email..."
+          placeholder="Buscar nombre, teléfono, email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -149,10 +147,9 @@ export default function ClientsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium text-sm">DNI</th>
                   <th className="text-left p-3 font-medium text-sm">Nombre</th>
-                  <th className="text-left p-3 font-medium text-sm">Email</th>
                   <th className="text-left p-3 font-medium text-sm">Teléfono</th>
+                  <th className="text-left p-3 font-medium text-sm">Email</th>
                   <th className="text-left p-3 font-medium text-sm">Nacimiento</th>
                   <th className="text-right p-3 font-medium text-sm">Acciones</th>
                 </tr>
@@ -160,10 +157,9 @@ export default function ClientsPage() {
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-3 font-mono text-sm">{client.dni}</td>
                     <td className="p-3 font-medium">{client.firstName} {client.lastName}</td>
-                    <td className="p-3 text-muted-foreground text-sm">{client.email || "-"}</td>
                     <td className="p-3 text-sm">{client.phone || "-"}</td>
+                    <td className="p-3 text-muted-foreground text-sm">{client.email || "-"}</td>
                     <td className="p-3 text-muted-foreground text-sm">
                       {client.birthDate ? (() => { const [y,m,d] = client.birthDate.split("T")[0].split("-"); return `${d}/${m}/${y}` })() : "-"}
                     </td>
@@ -191,9 +187,8 @@ export default function ClientsPage() {
                   <div className="flex items-start justify-between">
                     <div className="space-y-1 min-w-0">
                       <div className="font-medium">{client.firstName} {client.lastName}</div>
-                      <div className="text-sm text-muted-foreground font-mono">DNI: {client.dni}</div>
+                      {client.phone && <div className="text-sm font-mono">{client.phone}</div>}
                       {client.email && <div className="text-sm text-muted-foreground truncate">{client.email}</div>}
-                      {client.phone && <div className="text-sm">{client.phone}</div>}
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <Button variant="ghost" size="icon" onClick={() => openEdit(client)} aria-label="Editar cliente">
@@ -218,8 +213,8 @@ export default function ClientsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="dni">DNI *</Label>
-              <Input id="dni" value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} placeholder="12345678" required />
+              <Label htmlFor="phone">Teléfono *</Label>
+              <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 15) })} placeholder="3855841593" required />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -237,13 +232,9 @@ export default function ClientsPage() {
                 <Input id="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+54 11 1234-5678" />
+                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                <Input id="birthDate" type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="w-full" />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
-              <Input id="birthDate" type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="w-full" />
             </div>
             <Button type="submit" className="w-full">{editingClient ? "Guardar Cambios" : "Crear Cliente"}</Button>
           </form>

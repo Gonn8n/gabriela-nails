@@ -21,7 +21,6 @@ interface Service {
 
 interface Client {
   id: string
-  dni: string
   firstName: string
   lastName: string
   email: string | null
@@ -42,7 +41,7 @@ interface Appointment {
 }
 
 type Step =
-  | "id"
+  | "phone"
   | "my-appointments"
   | "services"
   | "datetime"
@@ -62,12 +61,12 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function BookingPage() {
-  const [step, setStep] = useState<Step>("id")
+  const [step, setStep] = useState<Step>("phone")
   const [loading, setLoading] = useState(false)
   const [services, setServices] = useState<Service[]>([])
   const [client, setClient] = useState<Client | null>(null)
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([])
-  const [dni, setDni] = useState("")
+  const [phone, setPhone] = useState("")
   const [error, setError] = useState("")
 
   // Cancel
@@ -154,14 +153,14 @@ export default function BookingPage() {
     }
   }, [formData.date, formData.serviceIds, step])
 
-  async function handleDniSubmit(e: React.FormEvent) {
+  async function handlePhoneSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
 
-    const res = await fetch(`/api/book?dni=${dni}`)
+    const res = await fetch(`/api/book?phone=${encodeURIComponent(phone)}`)
     if (!res.ok) {
-      setError("No se pudo consultar tu DNI. Probá de nuevo.")
+      setError("No se pudo consultar tu teléfono. Probá de nuevo.")
       setLoading(false)
       return
     }
@@ -207,7 +206,7 @@ export default function BookingPage() {
     const res = await fetch("/api/book", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dni, ...formData, paymentMethod }),
+      body: JSON.stringify({ ...formData, paymentMethod }),
     })
 
     const data = await res.json()
@@ -333,25 +332,24 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* ───── STEP: DNI ───── */}
-        {step === "id" && (
+        {/* ───── STEP: TELÉFONO ───── */}
+        {step === "phone" && (
           <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
-              <CardTitle className="text-lg">¿Cómo es tu DNI?</CardTitle>
+              <CardTitle className="text-lg">¿Cuál es tu teléfono?</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleDniSubmit} className="space-y-4">
+              <form onSubmit={handlePhoneSubmit} className="space-y-4">
                 <Input
-                  placeholder="Ingresá tu DNI"
-                  value={dni}
-                  onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 8); setDni(v); }}
-                  onFocus={() => { if (typeof window !== "undefined" && window.history) { window.history.pushState(null, "", window.location.href) } }}
-                  inputMode="numeric"
+                  placeholder="Ingresá tu teléfono"
+                  value={phone}
+                  onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 15); setPhone(v); }}
+                  inputMode="tel"
                   pattern="[0-9]*"
-                  maxLength={8}
+                  maxLength={15}
                   required
                 />
-                <Button type="submit" className="w-full" disabled={loading || !dni}>
+                <Button type="submit" className="w-full" disabled={loading || !phone}>
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Continuar
                 </Button>
@@ -580,7 +578,7 @@ export default function BookingPage() {
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="outline"
-                  onClick={() => setStep(upcomingAppointments.length > 0 ? "my-appointments" : "id")}
+                  onClick={() => setStep(upcomingAppointments.length > 0 ? "my-appointments" : "phone")}
                   className="flex-1"
                 >
                   <ArrowLeft className="h-4 w-4 mr-1" /> Volver

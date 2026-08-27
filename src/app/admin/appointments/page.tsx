@@ -38,7 +38,6 @@ import { PageHeader } from "@/components/page-header"
 
 interface Client {
   id: string
-  dni: string
   firstName: string
   lastName: string
   phone: string | null
@@ -491,13 +490,13 @@ export default function AppointmentsPage() {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Seleccionar cliente">
                     {form.clientId && clients.find((c) => c.id === form.clientId)
-                      ? `${clients.find((c) => c.id === form.clientId)!.firstName} ${clients.find((c) => c.id === form.clientId)!.lastName} (${clients.find((c) => c.id === form.clientId)!.dni})`
+                      ? `${clients.find((c) => c.id === form.clientId)!.firstName} ${clients.find((c) => c.id === form.clientId)!.lastName} (${clients.find((c) => c.id === form.clientId)!.phone || "sin teléfono"})`
                       : null}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.dni})</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin teléfono"})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

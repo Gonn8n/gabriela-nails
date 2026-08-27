@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from("Appointment")
-      .select("*, client:Client(id, firstName, lastName, dni, phone), services:AppointmentService(id, service:Service(name, color, price, duration))")
+      .select("*, client:Client(id, firstName, lastName, phone), services:AppointmentService(id, service:Service(name, color, price, duration))")
       .order("date", { ascending: false })
       .order("startTime", { ascending: false })
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      query = query.or(`identifier.ilike.%${search}%,client.firstName.ilike.%${search}%,client.lastName.ilike.%${search}%`)
+      query = query.or(`identifier.ilike.%${search}%,client.firstName.ilike.%${search}%,client.lastName.ilike.%${search}%,client.phone.ilike.%${search}%`)
     }
 
     const { data: appointments } = await query
