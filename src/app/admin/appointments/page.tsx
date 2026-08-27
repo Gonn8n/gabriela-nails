@@ -201,7 +201,8 @@ export default function AppointmentsPage() {
     if (res.ok) {
       toast.add({ type: "success", title: currentPaid ? "Marcado como no cobrado" : "Marcado como cobrado" })
     } else {
-      toast.add({ type: "error", title: "Error", description: "No se pudo actualizar el cobro." })
+      const data = await res.json().catch(() => ({}))
+      toast.add({ type: "error", title: "Error", description: data.error || "No se pudo actualizar el cobro." })
     }
     fetchData()
   }

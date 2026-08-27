@@ -31,10 +31,12 @@ export async function PUT(
       updateData.paid = paid
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("Appointment")
       .update(updateData)
       .eq("id", id)
+
+    if (updateError) throw updateError
 
     const { data: appointment } = await supabase
       .from("Appointment")
