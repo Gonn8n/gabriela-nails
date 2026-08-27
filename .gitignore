@@ -45,8 +45,20 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+
+# migration scripts (no longer needed)
+check-supabase.js
+migrate-to-supabase.js
+seed-services.js
 
 # skills
 skills-lock.json
+
+# AI agent tool dirs
+.agents/
+.claude/
+.windsurf/
 
 .vercel
