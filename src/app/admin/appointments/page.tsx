@@ -29,7 +29,6 @@ import {
   Calendar,
   Banknote,
   ArrowRightLeft,
-  Clock,
 } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
@@ -67,17 +66,13 @@ interface Appointment {
 
 const STATUS_ACTIONS = [
   { value: "booked", label: "Reservado", icon: CalendarClock, bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", activeBg: "bg-blue-100", activeBorder: "border-blue-400" },
-  { value: "confirmed", label: "Confirmado", icon: CheckCircle, bg: "bg-green-50", border: "border-green-200", text: "text-green-700", activeBg: "bg-green-100", activeBorder: "border-green-400" },
-  { value: "in_progress", label: "En curso", icon: Clock, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", activeBg: "bg-amber-100", activeBorder: "border-amber-400" },
-  { value: "completed", label: "Completado", icon: CheckCircle, bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", activeBg: "bg-emerald-100", activeBorder: "border-emerald-400" },
+  { value: "completed", label: "Finalizado", icon: CheckCircle, bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", activeBg: "bg-emerald-100", activeBorder: "border-emerald-400" },
   { value: "cancelled", label: "Cancelado", icon: XCircle, bg: "bg-red-50", border: "border-red-200", text: "text-red-700", activeBg: "bg-red-100", activeBorder: "border-red-400" },
-  { value: "rescheduled", label: "Reprogramado", icon: RefreshCw, bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", activeBg: "bg-violet-100", activeBorder: "border-violet-400" },
+  { value: "rescheduled", label: "Reprogramar", icon: RefreshCw, bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", activeBg: "bg-violet-100", activeBorder: "border-violet-400" },
 ]
 
 const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }> = {
   booked: { border: "border-l-blue-400", bg: "bg-blue-50/30", badge: "bg-blue-100 text-blue-700" },
-  confirmed: { border: "border-l-green-400", bg: "bg-green-50/30", badge: "bg-green-100 text-green-700" },
-  in_progress: { border: "border-l-amber-400", bg: "bg-amber-50/30", badge: "bg-amber-100 text-amber-700" },
   completed: { border: "border-l-emerald-400", bg: "bg-emerald-50/30", badge: "bg-emerald-100 text-emerald-700" },
   cancelled: { border: "border-l-red-300", bg: "bg-red-50/20", badge: "bg-red-100 text-red-600" },
   rescheduled: { border: "border-l-violet-400", bg: "bg-violet-50/30", badge: "bg-violet-100 text-violet-700" },
@@ -85,9 +80,7 @@ const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }>
 
 const STATUS_LABELS: Record<string, string> = {
   booked: "Reservado",
-  confirmed: "Confirmado",
-  in_progress: "En curso",
-  completed: "Completado",
+  completed: "Finalizado",
   cancelled: "Cancelado",
   rescheduled: "Reprogramado",
 }
@@ -95,9 +88,7 @@ const STATUS_LABELS: Record<string, string> = {
 const FILTER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "booked", label: "Reservados" },
-  { value: "confirmed", label: "Confirmados" },
-  { value: "in_progress", label: "En curso" },
-  { value: "completed", label: "Completados" },
+  { value: "completed", label: "Finalizados" },
   { value: "cancelled", label: "Cancelados" },
   { value: "rescheduled", label: "Reprogramados" },
 ]
@@ -313,6 +304,19 @@ export default function AppointmentsPage() {
                         </div>
                         <div className="text-[11px] text-muted-foreground">{apt.startTime}</div>
                       </div>
+                      {apt.paymentMethod && (
+                        <div className={`shrink-0 p-1.5 rounded-lg border ${
+                          apt.paymentMethod === "cash"
+                            ? "bg-green-50 border-green-200 text-green-600"
+                            : "bg-blue-50 border-blue-200 text-blue-600"
+                        }`} title={apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}>
+                          {apt.paymentMethod === "cash" ? (
+                            <Banknote className="h-5 w-5" />
+                          ) : (
+                            <ArrowRightLeft className="h-5 w-5" />
+                          )}
+                        </div>
+                      )}
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-gray-900 truncate">
                           {apt.client.firstName} {apt.client.lastName}
@@ -363,22 +367,8 @@ export default function AppointmentsPage() {
                     </div>
                   )}
 
-                  {/* Fila 2c: forma de pago */}
-                  {apt.paymentMethod && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2">
-                      {apt.paymentMethod === "cash" ? (
-                        <Banknote className="h-3.5 w-3.5 text-green-600" />
-                      ) : (
-                        <ArrowRightLeft className="h-3.5 w-3.5 text-blue-600" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
-                      </span>
-                    </div>
-                  )}
-
                   {/* Fila 3: botones de estado */}
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
                     {STATUS_ACTIONS.map((action) => {
                       const active = isActive(action.value)
                       const Icon = action.icon
