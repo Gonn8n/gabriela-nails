@@ -30,6 +30,7 @@ import {
   Banknote,
   ArrowRightLeft,
   CircleDollarSign,
+  MessageCircle,
 } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
@@ -40,6 +41,7 @@ interface Client {
   dni: string
   firstName: string
   lastName: string
+  phone: string | null
 }
 
 interface Service {
@@ -107,6 +109,7 @@ export default function AppointmentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
   const [notesValue, setNotesValue] = useState("")
+  const [lastCreated, setLastCreated] = useState<{ id: string; clientName: string; phone: string | null; date: string; startTime: string; endTime: string; services: string; totalPrice: number } | null>(null)
 
   function getTodayStr(): string {
     const d = new Date()
@@ -154,19 +157,50 @@ export default function AppointmentsPage() {
       serviceIds: [],
       notes: "",
     })
+    setLastCreated(null)
     setDialogOpen(true)
+  }
+
+  function sendWhatsApp() {
+    if (!lastCreated) return
+    const [y, m, d] = lastCreated.date.split("-")
+    const msg = `Hola ${lastCreated.clientName.split(" ")[0]}, te confirmamos tu turno:\n\n📅 Fecha: ${d}/${m}\n⏰ Hora: ${lastCreated.startTime} - ${lastCreated.endTime}\n💅 Servicios: ${lastCreated.services}\n💰 Total: $${lastCreated.totalPrice.toLocaleString("es-AR")}\n\n¡Te esperamos!\nGabriela Nails`
+    const phone = lastCreated.phone?.replace(/\D/g, "")
+    const url = phone
+      ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`
+    window.open(url, "_blank")
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
+    const selectedClient = clients.find((c) => c.id === form.clientId)
+    const selectedSvcs = services.filter((s) => form.serviceIds.includes(s.id))
+    const total = selectedSvcs.reduce((sum, s) => sum + s.price, 0)
+    const totalDur = selectedSvcs.reduce((sum, s) => sum + s.duration, 0)
+    const [sh, sm] = form.startTime.split(":").map(Number)
+    const endMin = sh * 60 + sm + totalDur
+    const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`
+    const servicesStr = selectedSvcs.map((s) => s.name).join(", ")
+
     const res = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     })
     if (res.ok) {
-      setDialogOpen(false)
+      const created = await res.json()
       toast.add({ type: "success", title: "Turno creado" })
+      setLastCreated({
+        id: created.id,
+        clientName: `${selectedClient?.firstName} ${selectedClient?.lastName}`,
+        phone: selectedClient?.phone || null,
+        date: form.date,
+        startTime: form.startTime,
+        endTime,
+        services: servicesStr,
+        totalPrice: total,
+      })
       fetchData()
     } else {
       const data = await res.json().catch(() => null)
@@ -454,7 +488,13 @@ export default function AppointmentsPage() {
             <div className="space-y-2">
               <Label>Cliente *</Label>
               <Select value={form.clientId} onValueChange={(v) => setForm({ ...form, clientId: v || "" })}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar cliente">
+                    {form.clientId && clients.find((c) => c.id === form.clientId)
+                      ? `${clients.find((c) => c.id === form.clientId)!.firstName} ${clients.find((c) => c.id === form.clientId)!.lastName} (${clients.find((c) => c.id === form.clientId)!.dni})`
+                      : null}
+                  </SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.dni})</SelectItem>
@@ -497,9 +537,21 @@ export default function AppointmentsPage() {
               <Label>Notas</Label>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notas adicionales..." />
             </div>
-            <Button type="submit" className="w-full" disabled={!form.clientId || form.serviceIds.length === 0}>
-              Crear Turno
-            </Button>
+            {lastCreated ? (
+              <div className="flex gap-2">
+                <Button type="button" onClick={sendWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  WhatsApp
+                </Button>
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setLastCreated(null) }} className="flex-1">
+                  Cerrar
+                </Button>
+              </div>
+            ) : (
+              <Button type="submit" className="w-full" disabled={!form.clientId || form.serviceIds.length === 0}>
+                Crear Turno
+              </Button>
+            )}
           </form>
         </DialogContent>
       </Dialog>
