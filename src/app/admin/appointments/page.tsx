@@ -67,17 +67,17 @@ interface Appointment {
 }
 
 const STATUS_ACTIONS = [
-  { value: "booked", label: "Reservado", icon: CalendarClock, bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", activeBg: "bg-blue-100", activeBorder: "border-blue-400" },
-  { value: "completed", label: "Finalizado", icon: CheckCircle, bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", activeBg: "bg-emerald-100", activeBorder: "border-emerald-400" },
-  { value: "cancelled", label: "Cancelado", icon: XCircle, bg: "bg-red-50", border: "border-red-200", text: "text-red-700", activeBg: "bg-red-100", activeBorder: "border-red-400" },
-  { value: "rescheduled", label: "Reprogramar", icon: RefreshCw, bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", activeBg: "bg-violet-100", activeBorder: "border-violet-400" },
+  { value: "booked", label: "Reservado", icon: CalendarClock, activeBg: "bg-blue-100", activeBorder: "border-blue-400", activeText: "text-blue-700", inactiveBg: "bg-gray-50", inactiveBorder: "border-gray-200", inactiveText: "text-gray-500" },
+  { value: "completed", label: "Finalizado", icon: CheckCircle, activeBg: "bg-emerald-100", activeBorder: "border-emerald-400", activeText: "text-emerald-700", inactiveBg: "bg-gray-50", inactiveBorder: "border-gray-200", inactiveText: "text-gray-500" },
+  { value: "cancelled", label: "Cancelado", icon: XCircle, activeBg: "bg-red-100", activeBorder: "border-red-400", activeText: "text-red-700", inactiveBg: "bg-gray-50", inactiveBorder: "border-gray-200", inactiveText: "text-gray-500" },
+  { value: "rescheduled", label: "Reprogramar", icon: RefreshCw, activeBg: "bg-violet-100", activeBorder: "border-violet-400", activeText: "text-violet-700", inactiveBg: "bg-gray-50", inactiveBorder: "border-gray-200", inactiveText: "text-gray-500" },
 ]
 
-const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }> = {
-  booked: { border: "border-l-blue-400", bg: "bg-blue-50/30", badge: "bg-blue-100 text-blue-700" },
-  completed: { border: "border-l-emerald-400", bg: "bg-emerald-50/30", badge: "bg-emerald-100 text-emerald-700" },
-  cancelled: { border: "border-l-red-300", bg: "bg-red-50/20", badge: "bg-red-100 text-red-600" },
-  rescheduled: { border: "border-l-violet-400", bg: "bg-violet-50/30", badge: "bg-violet-100 text-violet-700" },
+const STATUS_CARD: Record<string, { border: string; badge: string }> = {
+  booked: { border: "border-l-blue-400", badge: "bg-blue-100 text-blue-700" },
+  completed: { border: "border-l-emerald-400", badge: "bg-emerald-100 text-emerald-700" },
+  cancelled: { border: "border-l-red-300", badge: "bg-red-100 text-red-600" },
+  rescheduled: { border: "border-l-violet-400", badge: "bg-violet-100 text-violet-700" },
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -312,118 +312,122 @@ export default function AppointmentsPage() {
             const cardStyle = STATUS_CARD[apt.status] || STATUS_CARD.booked
             const isActive = (v: string) => apt.status === v
             return (
-              <Card key={apt.id} className={`overflow-hidden border-l-4 ${cardStyle.border} ${cardStyle.bg}`}>
+              <Card key={apt.id} className={`overflow-hidden border-l-4 ${cardStyle.border}`}>
                 <CardContent className="p-3 sm:p-4">
-                  {/* Fila 1: info + icono nota */}
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="text-center shrink-0 w-12">
-                        <div className="text-lg font-bold leading-tight text-gray-900">
-                          {formatDate(apt.date)}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">{apt.startTime}</div>
+                  {/* ── Fila 1: fecha + info del cliente ── */}
+                  <div className="flex items-start gap-3">
+                    <div className="text-center shrink-0 w-12 pt-0.5">
+                      <div className="text-lg font-bold leading-tight text-gray-900">
+                        {formatDate(apt.date)}
                       </div>
-                      {apt.paymentMethod && (
-                        <div className={`shrink-0 p-1.5 rounded-lg border ${
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        {apt.startTime}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold text-gray-900 truncate text-[15px]">
+                          {apt.client.firstName} {apt.client.lastName}
+                        </div>
+                        <button
+                          onClick={() => openNotes(apt)}
+                          className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md transition-colors ${
+                            apt.notes
+                              ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                              : "text-muted-foreground hover:bg-gray-100"
+                          }`}
+                          title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate mt-0.5">
+                        {apt.services.map((s) => s.service.name).join(", ")}
+                      </div>
+                      <div className="text-xs text-muted-foreground/70 mt-1">
+                        {apt.identifier} · {apt.endTime} · ${apt.totalPrice.toLocaleString("es-AR")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Fila 2: badge + iconos de pago ── */}
+                  <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md ${cardStyle.badge}`}>
+                      {STATUS_LABELS[apt.status]}
+                    </span>
+                    {apt.paymentMethod && (
+                      <div
+                        className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md border ${
                           apt.paymentMethod === "cash"
                             ? "bg-green-50 border-green-200 text-green-600"
                             : "bg-blue-50 border-blue-200 text-blue-600"
-                        }`} title={apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}>
-                          {apt.paymentMethod === "cash" ? (
-                            <Banknote className="h-5 w-5" />
-                          ) : (
-                            <ArrowRightLeft className="h-5 w-5" />
-                          )}
-                        </div>
-                      )}
-                      {apt.status === "completed" && (
-                        <button
-                          onClick={() => togglePaid(apt.id, apt.paid)}
-                          className={`shrink-0 p-1.5 rounded-lg border transition-colors ${
-                            apt.paid
-                              ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
-                              : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
-                          }`}
-                          title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
-                          aria-label={apt.paid ? "Marcar como no cobrado" : "Marcar como cobrado"}
-                        >
-                          <CircleDollarSign className="h-5 w-5" />
-                        </button>
-                      )}
-                      {apt.status === "completed" && apt.paymentMethod === "transfer" && !apt.paid && (
-                        <button
-                          onClick={() => togglePaid(apt.id, false)}
-                          className="shrink-0 px-2 py-1.5 rounded-lg border bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors text-[10px] font-medium flex items-center gap-1"
-                          title="Confirmar pago por transferencia"
-                        >
-                          <CircleDollarSign className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Confirmar</span>
-                        </button>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-gray-900 truncate">
-                          {apt.client.firstName} {apt.client.lastName}
-                        </div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {apt.services.map((s) => s.service.name).join(", ")}
-                        </div>
-                        <div className="text-xs text-muted-foreground/70 mt-0.5">
-                          {apt.identifier} · {apt.endTime} · ${apt.totalPrice.toLocaleString("es-AR")}
-                        </div>
-                        {/* Badge de estado */}
-                        <span className={`inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${cardStyle.badge}`}>
-                          {STATUS_LABELS[apt.status]}
-                        </span>
+                        }`}
+                        title={apt.paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
+                      >
+                        {apt.paymentMethod === "cash" ? (
+                          <Banknote className="h-4 w-4" />
+                        ) : (
+                          <ArrowRightLeft className="h-4 w-4" />
+                        )}
                       </div>
-                    </div>
-                    {/* Botón nota — siempre visible */}
-                    <button
-                      onClick={() => openNotes(apt)}
-                      className={`shrink-0 h-8 w-8 inline-flex items-center justify-center rounded-md transition-colors ${
-                        apt.notes
-                          ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
-                          : "text-muted-foreground hover:bg-gray-100"
-                      }`}
-                      title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
-                      aria-label={apt.notes ? "Ver nota" : "Agregar nota"}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </button>
+                    )}
+                    {apt.status === "completed" && (
+                      <button
+                        onClick={() => togglePaid(apt.id, apt.paid)}
+                        className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md border transition-colors ${
+                          apt.paid
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+                            : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
+                        }`}
+                        title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
+                      >
+                        <CircleDollarSign className="h-4 w-4" />
+                      </button>
+                    )}
+                    {apt.status === "completed" && apt.paymentMethod === "transfer" && !apt.paid && (
+                      <button
+                        onClick={() => togglePaid(apt.id, false)}
+                        className="shrink-0 px-2.5 py-1 rounded-md border bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors text-[10px] font-medium inline-flex items-center gap-1"
+                        title="Confirmar pago por transferencia"
+                      >
+                        <CircleDollarSign className="h-3.5 w-3.5" />
+                        <span>Confirmar</span>
+                      </button>
+                    )}
                   </div>
 
-                  {/* Fila 2: nota inline — solo si existe */}
+                  {/* Nota inline */}
                   {apt.notes && (
                     <button
                       onClick={() => openNotes(apt)}
-                      aria-label="Ver nota"
-                      className="w-full text-left text-xs text-amber-700/80 bg-amber-50/60 border border-amber-200/40 rounded-md px-2.5 py-1.5 mb-2 hover:bg-amber-50 transition-colors cursor-pointer truncate"
+                      className="w-full text-left text-xs text-amber-700/80 bg-amber-50/60 border border-amber-200/40 rounded-md px-2.5 py-1.5 mt-2 hover:bg-amber-50 transition-colors cursor-pointer truncate"
                     >
                       <MessageSquare className="h-3 w-3 inline mr-1 opacity-50" />
                       {apt.notes}
                     </button>
                   )}
 
-                  {/* Fila 2b: motivo de cancelación — solo si cancelado */}
+                  {/* Motivo cancelación */}
                   {apt.status === "cancelled" && apt.cancelReason && (
-                    <div className="w-full text-xs text-red-600/80 bg-red-50/60 border border-red-200/40 rounded-md px-2.5 py-1.5 mb-2 truncate">
+                    <div className="w-full text-xs text-red-600/80 bg-red-50/60 border border-red-200/40 rounded-md px-2.5 py-1.5 mt-2 truncate">
                       Motivo: {apt.cancelReason}
                     </div>
                   )}
 
-                  {/* Fila 3: botones de estado */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                  {/* ── Fila 3: botones de acción ── */}
+                  <div className="flex gap-2 mt-3">
                     {STATUS_ACTIONS.map((action) => {
-                      const active = isActive(action.value)
                       const Icon = action.icon
+                      const active = isActive(action.value)
                       return (
                         <button
                           key={action.value}
                           onClick={() => handleStatusChange(apt.id, action.value)}
                           aria-pressed={active}
-                          className={`inline-flex items-center justify-center gap-1 px-1 py-1.5 rounded-md text-[11px] font-medium border transition-all duration-150 ${
+                          className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[11px] font-medium border transition-all duration-150 ${
                             active
-                              ? `${action.activeBg} ${action.activeBorder} ${action.text}`
-                              : `${action.bg} ${action.border} ${action.text} opacity-50 hover:opacity-100`
+                              ? `${action.activeBg} ${action.activeBorder} ${action.activeText}`
+                              : `${action.inactiveBg} ${action.inactiveBorder} ${action.inactiveText}`
                           }`}
                         >
                           <Icon className="h-3.5 w-3.5 shrink-0" />
