@@ -11,6 +11,7 @@ interface DashboardData {
     endTime: string
     status: string
     totalPrice: number
+    paid: boolean
     client: { firstName: string; lastName: string }
     services: { service: { name: string; color: string } }[]
   }[]
@@ -20,6 +21,8 @@ interface DashboardData {
   rescheduledCount: number
   totalClients: number
   revenue: number
+  paidCount: number
+  unpaidCompletedCount: number
 }
 
 const cache = new Map<string, DashboardData>()
