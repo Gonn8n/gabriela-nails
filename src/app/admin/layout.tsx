@@ -55,7 +55,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       <Sidebar user={{ email: user.email }} />
-      <main className="flex-1 px-5 pb-24 pt-6 lg:px-10 lg:py-8 lg:pb-6 bg-pink-50/50 min-h-screen" style={{ paddingTop: "max(calc(var(--spacing) * 18), 1.5rem)" }}>
+      <main className="flex-1 px-5 pb-24 pt-6 lg:px-10 lg:py-8 lg:pb-6 bg-brand-soft/40 min-h-screen" style={{ paddingTop: "max(calc(var(--spacing) * 18), 1.5rem)" }}>
         {children}
       </main>
     </div>

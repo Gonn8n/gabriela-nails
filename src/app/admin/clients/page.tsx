@@ -12,6 +12,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Plus, Pencil, Trash2, Search } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
+import { toast } from "@/components/ui/toast"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
 interface Client {
   id: string
@@ -27,6 +30,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [form, setForm] = useState({
@@ -40,11 +44,16 @@ export default function ClientsPage() {
 
   useEffect(() => {
     fetchClients()
-  }, [search])
+  }, [debouncedSearch])
 
   async function fetchClients() {
-    const params = search ? `?search=${encodeURIComponent(search)}` : ""
+    const params = debouncedSearch ? `?search=${encodeURIComponent(debouncedSearch)}` : ""
     const res = await fetch(`/api/clients${params}`)
+    if (!res.ok) {
+      toast.add({ type: "error", title: "Error", description: "No se pudieron cargar los clientes." })
+      setLoading(false)
+      return
+    }
     const data = await res.json()
     setClients(data)
     setLoading(false)
@@ -83,13 +92,21 @@ export default function ClientsPage() {
     if (res.ok) {
       setDialogOpen(false)
       fetchClients()
+      toast.add({ type: "success", title: editingClient ? "Cliente actualizado" : "Cliente creado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo guardar el cliente." })
     }
   }
 
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este cliente?")) return
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" })
-    if (res.ok) fetchClients()
+    if (res.ok) {
+      fetchClients()
+      toast.add({ type: "success", title: "Cliente eliminado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo eliminar el cliente." })
+    }
   }
 
   if (loading) {
@@ -98,16 +115,16 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-sm text-muted-foreground">{clients.length} registrados</p>
-        </div>
-        <Button onClick={openCreate} className="sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Cliente
-        </Button>
-      </div>
+      <PageHeader
+        title="Clientes"
+        description={`${clients.length} registrados`}
+        actions={
+          <Button onClick={openCreate} className="sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Cliente
+          </Button>
+        }
+      />
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -152,10 +169,10 @@ export default function ClientsPage() {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(client)} aria-label="Editar cliente">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id)} aria-label="Eliminar cliente">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -179,10 +196,10 @@ export default function ClientsPage() {
                       {client.phone && <div className="text-sm">{client.phone}</div>}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(client)}>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(client)} aria-label="Editar cliente">
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id)}>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(client.id)} aria-label="Eliminar cliente">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

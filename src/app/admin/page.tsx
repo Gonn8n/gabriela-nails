@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Users, DollarSign, Clock, RefreshCw } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 
 interface DashboardData {
   todayAppointments: {
@@ -56,10 +57,6 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchData()
-  }, [range])
-
   async function fetchData() {
     setLoading(true)
     const res = await fetch(`/api/dashboard?range=${range}`)
@@ -68,33 +65,35 @@ export default function DashboardPage() {
     setLoading(false)
   }
 
+  useEffect(() => {
+    fetchData()
+  }, [range])
+
   if (loading || !data) {
     return <div className="text-center py-8">Cargando dashboard...</div>
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            {range === "today" ? "Resumen del día" : `Próximos ${range} días`}
-          </p>
-        </div>
-        <div className="flex gap-1 border rounded-md p-0.5">
-          {RANGE_OPTIONS.map((opt) => (
-            <Button
-              key={opt.value}
-              variant={range === opt.value ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setRange(opt.value)}
-              className="text-xs px-3"
-            >
-              {opt.label}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={range === "today" ? "Resumen del día" : `Próximos ${range} días`}
+        actions={
+          <div className="flex gap-1 border rounded-md p-0.5" role="group" aria-label="Rango de fechas">
+            {RANGE_OPTIONS.map((opt) => (
+              <Button
+                key={opt.value}
+                variant={range === opt.value ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setRange(opt.value)}
+                className="text-xs px-3"
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+        }
+      />
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -143,14 +142,14 @@ export default function DashboardPage() {
       {(data.rescheduledCount > 0 || data.cancelledCount > 0) && (
         <div className="flex gap-3 flex-wrap">
           {data.rescheduledCount > 0 && (
-            <div className="flex items-center gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm bg-card border rounded-lg px-3 py-2">
               <RefreshCw className="h-4 w-4 text-blue-500" />
               <span className="text-muted-foreground">Reprogramados:</span>
               <span className="font-semibold">{data.rescheduledCount}</span>
             </div>
           )}
           {data.cancelledCount > 0 && (
-            <div className="flex items-center gap-2 text-sm bg-white border rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm bg-card border rounded-lg px-3 py-2">
               <span className="text-muted-foreground">Cancelados:</span>
               <span className="font-semibold">{data.cancelledCount}</span>
             </div>

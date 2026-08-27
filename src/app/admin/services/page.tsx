@@ -12,6 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Plus, Pencil, Trash2 } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
+import { toast } from "@/components/ui/toast"
 
 interface Service {
   id: string
@@ -78,13 +80,21 @@ export default function ServicesPage() {
     if (res.ok) {
       setDialogOpen(false)
       fetchServices()
+      toast.add({ type: "success", title: editingService ? "Servicio actualizado" : "Servicio creado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo guardar el servicio." })
     }
   }
 
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este servicio?")) return
     const res = await fetch(`/api/services/${id}`, { method: "DELETE" })
-    if (res.ok) fetchServices()
+    if (res.ok) {
+      fetchServices()
+      toast.add({ type: "success", title: "Servicio eliminado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo eliminar el servicio." })
+    }
   }
 
   if (loading) {
@@ -93,16 +103,16 @@ export default function ServicesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
-          <p className="text-sm text-muted-foreground">Gestiona los servicios de manicura</p>
-        </div>
-        <Button onClick={openCreate} className="sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Servicio
-        </Button>
-      </div>
+      <PageHeader
+        title="Servicios"
+        description="Gestiona los servicios de manicura"
+        actions={
+          <Button onClick={openCreate} className="sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Servicio
+          </Button>
+        }
+      />
 
       {services.length === 0 ? (
         <Card>
@@ -120,10 +130,10 @@ export default function ServicesPage() {
                   <CardTitle className="text-base">{service.name}</CardTitle>
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(service)}>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(service)} aria-label="Editar servicio">
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(service.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(service.id)} aria-label="Eliminar servicio">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

@@ -29,7 +29,11 @@ import {
   Calendar,
   Banknote,
   ArrowRightLeft,
+  Clock,
 } from "lucide-react"
+import { toast } from "@/components/ui/toast"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { PageHeader } from "@/components/page-header"
 
 interface Client {
   id: string
@@ -63,6 +67,8 @@ interface Appointment {
 
 const STATUS_ACTIONS = [
   { value: "booked", label: "Reservado", icon: CalendarClock, bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", activeBg: "bg-blue-100", activeBorder: "border-blue-400" },
+  { value: "confirmed", label: "Confirmado", icon: CheckCircle, bg: "bg-green-50", border: "border-green-200", text: "text-green-700", activeBg: "bg-green-100", activeBorder: "border-green-400" },
+  { value: "in_progress", label: "En curso", icon: Clock, bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", activeBg: "bg-amber-100", activeBorder: "border-amber-400" },
   { value: "completed", label: "Completado", icon: CheckCircle, bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", activeBg: "bg-emerald-100", activeBorder: "border-emerald-400" },
   { value: "cancelled", label: "Cancelado", icon: XCircle, bg: "bg-red-50", border: "border-red-200", text: "text-red-700", activeBg: "bg-red-100", activeBorder: "border-red-400" },
   { value: "rescheduled", label: "Reprogramado", icon: RefreshCw, bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", activeBg: "bg-violet-100", activeBorder: "border-violet-400" },
@@ -70,6 +76,8 @@ const STATUS_ACTIONS = [
 
 const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }> = {
   booked: { border: "border-l-blue-400", bg: "bg-blue-50/30", badge: "bg-blue-100 text-blue-700" },
+  confirmed: { border: "border-l-green-400", bg: "bg-green-50/30", badge: "bg-green-100 text-green-700" },
+  in_progress: { border: "border-l-amber-400", bg: "bg-amber-50/30", badge: "bg-amber-100 text-amber-700" },
   completed: { border: "border-l-emerald-400", bg: "bg-emerald-50/30", badge: "bg-emerald-100 text-emerald-700" },
   cancelled: { border: "border-l-red-300", bg: "bg-red-50/20", badge: "bg-red-100 text-red-600" },
   rescheduled: { border: "border-l-violet-400", bg: "bg-violet-50/30", badge: "bg-violet-100 text-violet-700" },
@@ -77,6 +85,8 @@ const STATUS_CARD: Record<string, { border: string; bg: string; badge: string }>
 
 const STATUS_LABELS: Record<string, string> = {
   booked: "Reservado",
+  confirmed: "Confirmado",
+  in_progress: "En curso",
   completed: "Completado",
   cancelled: "Cancelado",
   rescheduled: "Reprogramado",
@@ -85,6 +95,8 @@ const STATUS_LABELS: Record<string, string> = {
 const FILTER_OPTIONS = [
   { value: "all", label: "Todos" },
   { value: "booked", label: "Reservados" },
+  { value: "confirmed", label: "Confirmados" },
+  { value: "in_progress", label: "En curso" },
   { value: "completed", label: "Completados" },
   { value: "cancelled", label: "Cancelados" },
   { value: "rescheduled", label: "Reprogramados" },
@@ -97,6 +109,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const debouncedSearch = useDebouncedValue(search, 300)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
   const [notesValue, setNotesValue] = useState("")
@@ -116,11 +129,11 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     fetchData()
-  }, [search, statusFilter])
+  }, [debouncedSearch, statusFilter])
 
   async function fetchData() {
     const params = new URLSearchParams()
-    if (search) params.set("search", search)
+    if (debouncedSearch) params.set("search", debouncedSearch)
     if (statusFilter !== "all") params.set("status", statusFilter)
 
     const [aptRes, cliRes, srvRes] = await Promise.all([
@@ -128,6 +141,10 @@ export default function AppointmentsPage() {
       fetch("/api/clients"),
       fetch("/api/services"),
     ])
+
+    if (!aptRes.ok || !cliRes.ok || !srvRes.ok) {
+      toast.add({ type: "error", title: "Error", description: "No se pudieron cargar los datos." })
+    }
 
     setAppointments(await aptRes.json())
     setClients(await cliRes.json())
@@ -155,16 +172,29 @@ export default function AppointmentsPage() {
     })
     if (res.ok) {
       setDialogOpen(false)
+      toast.add({ type: "success", title: "Turno creado" })
       fetchData()
+    } else {
+      const data = await res.json().catch(() => null)
+      toast.add({ type: "error", title: "Error", description: data?.error || "No se pudo crear el turno." })
     }
   }
 
   async function handleStatusChange(id: string, status: string) {
-    await fetch(`/api/appointments/${id}`, {
+    if (status === "cancelled") {
+      const ok = window.confirm("¿Marcar como cancelado? Se quitará el turno de la agenda.")
+      if (!ok) return
+    }
+    const res = await fetch(`/api/appointments/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     })
+    if (res.ok) {
+      toast.add({ type: "success", title: "Estado actualizado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo actualizar el estado." })
+    }
     fetchData()
   }
 
@@ -175,11 +205,16 @@ export default function AppointmentsPage() {
 
   async function saveNotes() {
     if (!notesDialog.apt) return
-    await fetch(`/api/appointments/${notesDialog.apt.id}`, {
+    const res = await fetch(`/api/appointments/${notesDialog.apt.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes: notesValue }),
     })
+    if (res.ok) {
+      toast.add({ type: "success", title: "Nota guardada" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo guardar la nota." })
+    }
     setNotesDialog({ open: false, apt: null })
     fetchData()
   }
@@ -206,16 +241,16 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Turnos</h1>
-          <p className="text-sm text-muted-foreground">{appointments.length} turnos</p>
-        </div>
-        <Button onClick={openCreate} className="sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Turno
-        </Button>
-      </div>
+      <PageHeader
+        title="Turnos"
+        description={`${appointments.length} turnos`}
+        actions={
+          <Button onClick={openCreate} className="sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Nuevo Turno
+          </Button>
+        }
+      />
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -234,6 +269,7 @@ export default function AppointmentsPage() {
               variant={statusFilter === opt.value ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter(opt.value)}
+              aria-pressed={statusFilter === opt.value}
               className="text-xs"
             >
               {opt.label}
@@ -287,8 +323,8 @@ export default function AppointmentsPage() {
                         <div className="text-xs text-muted-foreground/70 mt-0.5">
                           {apt.identifier} · {apt.endTime} · ${apt.totalPrice.toLocaleString("es-AR")}
                         </div>
-                        {/* Badge de estado — solo mobile */}
-                        <span className={`sm:hidden inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${cardStyle.badge}`}>
+                        {/* Badge de estado */}
+                        <span className={`inline-block mt-1.5 text-[10px] font-medium px-2 py-0.5 rounded-full ${cardStyle.badge}`}>
                           {STATUS_LABELS[apt.status]}
                         </span>
                       </div>
@@ -302,6 +338,7 @@ export default function AppointmentsPage() {
                           : "text-muted-foreground hover:bg-gray-100"
                       }`}
                       title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
+                      aria-label={apt.notes ? "Ver nota" : "Agregar nota"}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </button>
@@ -311,6 +348,7 @@ export default function AppointmentsPage() {
                   {apt.notes && (
                     <button
                       onClick={() => openNotes(apt)}
+                      aria-label="Ver nota"
                       className="w-full text-left text-xs text-amber-700/80 bg-amber-50/60 border border-amber-200/40 rounded-md px-2.5 py-1.5 mb-2 hover:bg-amber-50 transition-colors cursor-pointer truncate"
                     >
                       <MessageSquare className="h-3 w-3 inline mr-1 opacity-50" />
@@ -339,8 +377,8 @@ export default function AppointmentsPage() {
                     </div>
                   )}
 
-                  {/* Fila 3: botones de estado — grid 4 cols */}
-                  <div className="grid grid-cols-4 gap-1">
+                  {/* Fila 3: botones de estado */}
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-1">
                     {STATUS_ACTIONS.map((action) => {
                       const active = isActive(action.value)
                       const Icon = action.icon
@@ -348,6 +386,7 @@ export default function AppointmentsPage() {
                         <button
                           key={action.value}
                           onClick={() => handleStatusChange(apt.id, action.value)}
+                          aria-pressed={active}
                           className={`inline-flex items-center justify-center gap-1 px-1 py-1.5 rounded-md text-[11px] font-medium border transition-all duration-150 ${
                             active
                               ? `${action.activeBg} ${action.activeBorder} ${action.text}`

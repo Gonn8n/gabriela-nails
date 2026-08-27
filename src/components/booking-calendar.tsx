@@ -95,13 +95,13 @@ export function BookingCalendar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8" aria-label="Mes anterior">
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="text-sm font-semibold">
           {MONTH_NAMES[month]} {year}
         </div>
-        <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8" aria-label="Mes siguiente">
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -127,23 +127,32 @@ export function BookingCalendar({
               type="button"
               disabled={disabled}
               onClick={() => onDateSelect(str)}
+              aria-label={new Date(str + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+              aria-pressed={selected}
               className={`
                 relative h-10 text-sm rounded-lg transition-colors
                 ${selected
-                  ? "bg-pink-500 text-white font-semibold shadow-sm"
+                  ? "bg-brand text-primary-foreground font-semibold shadow-sm"
                   : today
-                    ? "border border-pink-300 text-pink-600 font-medium"
+                    ? "border border-brand-muted text-brand font-medium"
                     : disabled
-                      ? "text-gray-300 cursor-not-allowed"
-                      : "text-gray-700 hover:bg-pink-50 cursor-pointer"
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "text-foreground hover:bg-brand-soft cursor-pointer"
                 }
-                ${!isCurrentMonth(d) ? "text-gray-200" : ""}
+                ${!isCurrentMonth(d) ? "text-muted-foreground/30" : ""}
               `}
             >
               {d.getDate()}
             </button>
           )
         })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand" />Seleccionado</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full border border-brand-muted" />Hoy</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-brand-soft border border-brand-muted" />Disponible</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/20" />No disponible</span>
       </div>
     </div>
   )

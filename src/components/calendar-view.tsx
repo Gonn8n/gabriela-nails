@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ChevronLeft, ChevronRight, Calendar, Clock } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
 
 interface Appointment {
   id: string
@@ -93,10 +95,7 @@ export function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchCalendarData()
-  }, [currentDate, viewMode])
+  const [selectedApt, setSelectedApt] = useState<Appointment | null>(null)
 
   function toLocalDateStr(d: Date): string {
     const y = d.getFullYear()
@@ -128,6 +127,10 @@ export function CalendarView() {
     setLoading(false)
   }
 
+  useEffect(() => {
+    fetchCalendarData()
+  }, [currentDate, viewMode])
+
   function shift(delta: number) {
     const d = new Date(currentDate)
     if (viewMode === "day") d.setDate(d.getDate() + delta)
@@ -152,7 +155,7 @@ export function CalendarView() {
           <div key={hour} className="border-b border-r" style={{ height: HOUR_HEIGHT }} />
         ))}
         {dayApts.map((apt) => {
-          const aptStartMin = timeToMinutes(apt.startTime) - dayStart - 30
+          const aptStartMin = timeToMinutes(apt.startTime) - dayStart
           const aptEndMin = timeToMinutes(apt.endTime) - dayStart
           const top = (Math.max(aptStartMin, 0) / totalMinutes) * gridHeight
           const height = ((aptEndMin - Math.max(aptStartMin, 0)) / totalMinutes) * gridHeight
@@ -160,6 +163,7 @@ export function CalendarView() {
           return (
             <div
               key={apt.id}
+              onClick={() => setSelectedApt(apt)}
               className="absolute left-0.5 right-0.5 rounded-md text-white text-xs p-1.5 z-20 cursor-pointer shadow-sm border border-white/20"
               style={{ top, height: Math.max(height, compact ? 24 : 40), backgroundColor: svcColor }}
             >
@@ -202,7 +206,7 @@ export function CalendarView() {
                 {hourApts.map((apt) => {
                   const svcColor = apt.services[0]?.service.color || "#8b5cf6"
                   return (
-                    <div key={apt.id} className="rounded-lg p-2 mb-1 shadow-sm text-white" style={{ backgroundColor: svcColor }}>
+                    <div key={apt.id} onClick={() => setSelectedApt(apt)} className="rounded-lg p-2 mb-1 shadow-sm text-white cursor-pointer" style={{ backgroundColor: svcColor }}>
                       <div className="font-semibold text-sm">{apt.client.firstName} {apt.client.lastName}</div>
                       <div className="text-xs opacity-90">{apt.startTime} - {apt.endTime} | {apt.services.map((s) => s.service.name).join(", ")}</div>
                     </div>
@@ -218,28 +222,30 @@ export function CalendarView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Calendario</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex border rounded-md">
-            {(["day", "week", "month"] as ViewMode[]).map((mode) => (
-              <Button key={mode} variant={viewMode === mode ? "default" : "ghost"} size="sm" onClick={() => setViewMode(mode)} className="rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3">
-                {mode === "day" ? "Día" : mode === "week" ? "Semana" : "Mes"}
-              </Button>
-            ))}
+      <PageHeader
+        title="Calendario"
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex border rounded-md">
+              {(["day", "week", "month"] as ViewMode[]).map((mode) => (
+                <Button key={mode} variant={viewMode === mode ? "default" : "ghost"} size="sm" onClick={() => setViewMode(mode)} className="rounded-none first:rounded-l-md last:rounded-r-md text-xs px-3">
+                  {mode === "day" ? "Día" : mode === "week" ? "Semana" : "Mes"}
+                </Button>
+              ))}
+            </div>
+            <Button variant="outline" size="icon" onClick={() => shift(-1)} aria-label="Anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={goToToday} size="sm">
+              <Calendar className="h-4 w-4 mr-1" />
+              Hoy
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => shift(1)} aria-label="Siguiente">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={() => shift(-1)}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={goToToday} size="sm">
-            <Calendar className="h-4 w-4 mr-1" />
-            Hoy
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => shift(1)}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {viewMode === "day" && (
         <div className="text-sm text-muted-foreground">
@@ -288,15 +294,23 @@ export function CalendarView() {
             </div>
             {getWeekDays(currentDate).map((day) => (
               <div key={day.toISOString()} className="flex-1 border-r last:border-r-0">
-                <div className={`text-center py-2 border-b text-xs font-medium ${isToday(day) ? "bg-pink-50 text-pink-700" : ""}`}>
+                <div className={`text-center py-2 border-b text-xs font-medium ${isToday(day) ? "bg-brand-soft text-brand" : ""}`}>
                   {day.toLocaleDateString("es-AR", { weekday: "short", day: "numeric" })}
                 </div>
                 <div className="relative" style={{ height: gridHeight }}>
                   {HOURS.map((hour) => (
                     <div key={hour} className="border-b" style={{ height: HOUR_HEIGHT }} />
                   ))}
+                  {isToday(day) && (
+                    <div
+                      className="absolute left-0 right-0 border-t-2 border-red-500 z-30"
+                      style={{ top: `${((new Date().getHours() * 60 + new Date().getMinutes() - dayStart) / totalMinutes) * gridHeight}px` }}
+                    >
+                      <div className="absolute -left-1.5 -top-1.5 w-3 h-3 bg-red-500 rounded-full" />
+                    </div>
+                  )}
                   {appointments.filter((a) => isSameDay(a.date, day)).map((apt) => {
-                    const aptStartMin = timeToMinutes(apt.startTime) - dayStart - 30
+                    const aptStartMin = timeToMinutes(apt.startTime) - dayStart
                     const aptEndMin = timeToMinutes(apt.endTime) - dayStart
                     const top = (Math.max(aptStartMin, 0) / totalMinutes) * gridHeight
                     const height = ((aptEndMin - Math.max(aptStartMin, 0)) / totalMinutes) * gridHeight
@@ -304,6 +318,7 @@ export function CalendarView() {
                     return (
                       <div
                         key={apt.id}
+                        onClick={() => setSelectedApt(apt)}
                         className="absolute left-0.5 right-0.5 rounded-md text-white text-[10px] p-1.5 z-20 cursor-pointer shadow-sm border border-white/20"
                         style={{ top, height: Math.max(height, 24), backgroundColor: svcColor }}
                       >
@@ -333,16 +348,17 @@ export function CalendarView() {
               return (
                 <div
                   key={day.toISOString()}
-                  className={`min-h-[80px] sm:min-h-[100px] border-b border-r p-1 last:border-r-0 ${!isCurrentMonth ? "bg-muted/30 text-muted-foreground" : ""} ${isToday(day) ? "bg-pink-50" : ""}`}
+                  className={`min-h-[80px] sm:min-h-[100px] border-b border-r p-1 last:border-r-0 ${!isCurrentMonth ? "bg-muted/30 text-muted-foreground" : ""} ${isToday(day) ? "bg-brand-soft" : ""}`}
                 >
-                  <div className={`text-xs font-medium mb-1 ${isToday(day) ? "bg-pink-600 text-white w-5 h-5 rounded-full flex items-center justify-center" : ""}`}>
+                  <div className={`text-xs font-medium mb-1 ${isToday(day) ? "bg-brand text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center" : ""}`}>
                     {day.getDate()}
                   </div>
                   <div className="space-y-0.5">
                     {dayApts.slice(0, 3).map((apt) => (
                       <div
                         key={apt.id}
-                        className="text-[10px] leading-tight rounded px-1 py-0.5 truncate text-white"
+                        onClick={() => setSelectedApt(apt)}
+                        className="text-[10px] leading-tight rounded px-1 py-0.5 truncate text-white cursor-pointer"
                         style={{ backgroundColor: apt.services[0]?.service.color || "#6b7280" }}
                       >
                         {apt.startTime} {apt.client.firstName} {apt.client.lastName}
@@ -358,6 +374,46 @@ export function CalendarView() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!selectedApt} onOpenChange={(open) => { if (!open) setSelectedApt(null) }}>
+        {selectedApt && (
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedApt.client.firstName} {selectedApt.client.lastName}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <Badge>{getStatusLabel(selectedApt.status)}</Badge>
+                <span className="font-mono text-xs text-muted-foreground">{selectedApt.identifier}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 shrink-0" />
+                {new Date(selectedApt.date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })} · {selectedApt.startTime} - {selectedApt.endTime}
+              </div>
+              <div className="space-y-1 pt-1">
+                {selectedApt.services.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.service.color }} />
+                    <span>{s.service.name}</span>
+                  </div>
+                ))}
+              </div>
+              {selectedApt.client.phone && (
+                <div className="text-muted-foreground">Tel: {selectedApt.client.phone}</div>
+              )}
+              <div className="border-t pt-2 flex justify-between font-semibold">
+                <span>Total</span>
+                <span>${selectedApt.totalPrice.toLocaleString("es-AR")}</span>
+              </div>
+            </div>
+            <Button className="w-full" onClick={() => { window.location.href = "/admin/appointments" }}>
+              Gestionar en Turnos
+            </Button>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   )
 }

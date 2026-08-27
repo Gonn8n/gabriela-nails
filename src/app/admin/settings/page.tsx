@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Save, Plus, Trash2, Clock, CalendarDays, Ban } from "lucide-react"
+import { PageHeader } from "@/components/page-header"
+import { toast } from "@/components/ui/toast"
 
 interface Settings {
   workingHoursStart: string
@@ -51,7 +53,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
   const [loading, setLoading] = useState(true)
-  const [saved, setSaved] = useState(false)
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
   const [blockForm, setBlockForm] = useState({
     date: "",
@@ -82,13 +83,16 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (res.ok) {
+      toast.add({ type: "success", title: "Configuración guardada" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo guardar la configuración." })
+    }
   }
 
   function toggleDay(day: number) {
@@ -111,29 +115,37 @@ export default function SettingsPage() {
       setBlockDialogOpen(false)
       setBlockForm({ date: "", startTime: "08:00", endTime: "09:30", reason: "" })
       fetchBlockedDates()
+      toast.add({ type: "success", title: "Horario bloqueado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo bloquear el horario." })
     }
   }
 
   async function handleDeleteBlockedDate(id: string) {
     if (!confirm("¿Eliminar este bloqueo?")) return
     const res = await fetch(`/api/settings/blocked-dates?id=${id}`, { method: "DELETE" })
-    if (res.ok) fetchBlockedDates()
+    if (res.ok) {
+      fetchBlockedDates()
+      toast.add({ type: "success", title: "Bloqueo eliminado" })
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo eliminar el bloqueo." })
+    }
   }
 
   if (loading) return <div className="text-center py-8">Cargando configuración...</div>
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-          <p className="text-sm text-muted-foreground">Horarios, reglas y días de atención</p>
-        </div>
-        <Button onClick={handleSave} className="sm:w-auto">
-          <Save className="h-4 w-4 mr-2" />
-          {saved ? "Guardado!" : "Guardar"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Configuración"
+        description="Horarios, reglas y días de atención"
+        actions={
+          <Button onClick={handleSave} className="sm:w-auto">
+            <Save className="h-4 w-4 mr-2" />
+            Guardar
+          </Button>
+        }
+      />
 
       {/* Row 1: Working hours + Break */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -263,7 +275,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteBlockedDate(bd.id)} className="shrink-0">
+                  <Button variant="ghost" size="icon" onClick={() => handleDeleteBlockedDate(bd.id)} className="shrink-0" aria-label="Eliminar bloqueo">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

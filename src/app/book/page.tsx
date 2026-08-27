@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, Loader2, ArrowLeft, ArrowRight, CalendarDays, Clock, AlertTriangle, XCircle, Banknote, ArrowRightLeft, Copy, Check } from "lucide-react"
 import { BookingCalendar } from "@/components/booking-calendar"
+import { toast } from "@/components/ui/toast"
 
 interface Service {
   id: string
@@ -54,6 +55,10 @@ type Step =
 const STATUS_LABELS: Record<string, string> = {
   booked: "Reservado",
   confirmed: "Confirmado",
+  in_progress: "En curso",
+  completed: "Completado",
+  cancelled: "Cancelado",
+  rescheduled: "Reprogramado",
 }
 
 export default function BookingPage() {
@@ -84,6 +89,7 @@ export default function BookingPage() {
   // Settings
   const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5, 6])
   const [cancellationHours, setCancellationHours] = useState(3)
+  const [bookingWindowDays, setBookingWindowDays] = useState(30)
 
   // Form
   const [formData, setFormData] = useState({
@@ -97,6 +103,46 @@ export default function BookingPage() {
     startTime: "",
   })
 
+  async function fetchServices() {
+    const res = await fetch("/api/services")
+    if (!res.ok) {
+      toast.add({ type: "error", title: "Error", description: "No se pudieron cargar los servicios. Probá de nuevo." })
+      return
+    }
+    setServices(await res.json())
+  }
+
+  async function fetchSettings() {
+    const res = await fetch("/api/settings")
+    if (res.ok) {
+      const data = await res.json()
+      if (data.workingDays) setWorkingDays(data.workingDays)
+      if (data.cancellationHours) setCancellationHours(parseInt(data.cancellationHours))
+      if (data.bookingWindowDays) setBookingWindowDays(parseInt(data.bookingWindowDays))
+    }
+  }
+
+  async function fetchSlots() {
+    setSlotsLoading(true)
+    setSlotsReason("")
+    const params = new URLSearchParams({ date: formData.date })
+    if (formData.serviceIds.length > 0) {
+      params.set("serviceIds", formData.serviceIds.join(","))
+    }
+    try {
+      const res = await fetch(`/api/book/slots?${params}`)
+      if (!res.ok) throw new Error("fetch failed")
+      const data = await res.json()
+      setAvailableSlots(data.slots || [])
+      setSlotsReason(data.reason || "")
+    } catch {
+      setAvailableSlots([])
+      setSlotsReason("No se pudieron cargar los horarios. Probá de nuevo.")
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchServices()
     fetchSettings()
@@ -108,43 +154,17 @@ export default function BookingPage() {
     }
   }, [formData.date, formData.serviceIds, step])
 
-  async function fetchServices() {
-    const res = await fetch("/api/services")
-    setServices(await res.json())
-  }
-
-  async function fetchSettings() {
-    const res = await fetch("/api/settings")
-    if (res.ok) {
-      const data = await res.json()
-      if (data.workingDays) setWorkingDays(data.workingDays)
-      if (data.cancellationHours) setCancellationHours(parseInt(data.cancellationHours))
-    }
-  }
-
-  async function fetchSlots() {
-    setSlotsLoading(true)
-    setSlotsReason("")
-    const params = new URLSearchParams({ date: formData.date })
-    if (formData.serviceIds.length > 0) {
-      params.set("serviceIds", formData.serviceIds.join(","))
-    }
-    const res = await fetch(`/api/book/slots?${params}`)
-    const data = await res.json()
-    setAvailableSlots(data.slots || [])
-    setSlotsReason(data.reason || "")
-    if (data.slots?.length > 0 && !formData.startTime) {
-      setFormData((prev) => ({ ...prev, startTime: data.slots[0] }))
-    }
-    setSlotsLoading(false)
-  }
-
   async function handleDniSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     const res = await fetch(`/api/book?dni=${dni}`)
+    if (!res.ok) {
+      setError("No se pudo consultar tu DNI. Probá de nuevo.")
+      setLoading(false)
+      return
+    }
     const data = await res.json()
 
     if (data.client) {
@@ -286,7 +306,7 @@ export default function BookingPage() {
 
   const today = new Date()
   const maxDate = new Date()
-  maxDate.setDate(maxDate.getDate() + 30)
+  maxDate.setDate(maxDate.getDate() + bookingWindowDays)
   function toLocalStr(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` }
   const minDateStr = toLocalStr(today)
   const maxDateStr = toLocalStr(maxDate)
@@ -299,7 +319,7 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pink-50 py-6 px-4 sm:py-8">
+    <div className="min-h-screen bg-brand-soft/40 py-6 px-4 sm:py-8">
       <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="text-center mb-6">
@@ -308,14 +328,14 @@ export default function BookingPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4">
+          <div role="alert" aria-live="polite" className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mb-4">
             {error}
           </div>
         )}
 
         {/* ───── STEP: DNI ───── */}
         {step === "id" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg">¿Cómo es tu DNI?</CardTitle>
             </CardHeader>
@@ -342,7 +362,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: TURNOS PRÓXIMOS ───── */}
         {step === "my-appointments" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg">
                 Hola {client?.firstName}
@@ -437,7 +457,7 @@ export default function BookingPage() {
 
               <div className="border-t pt-4">
                 <Button
-                  className="w-full bg-pink-500 hover:bg-pink-600"
+                  className="w-full"
                   onClick={() => setStep("services")}
                 >
                   Reservar nuevo turno
@@ -449,7 +469,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: SERVICIOS ───── */}
         {step === "services" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg">
                 {client ? `Hola ${client.firstName}` : "Completá tus datos"}
@@ -506,15 +526,22 @@ export default function BookingPage() {
               )}
 
               <div className="space-y-1.5">
-                {services.map((service) => (
+                {services.length === 0 ? (
+                  <div className="space-y-2" aria-busy="true">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
+                    ))}
+                  </div>
+                ) : services.map((service) => (
                   <button
                     key={service.id}
                     type="button"
                     onClick={() => toggleService(service.id)}
+                    aria-pressed={formData.serviceIds.includes(service.id)}
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       formData.serviceIds.includes(service.id)
-                        ? "border-pink-500 bg-pink-50 shadow-sm"
-                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        ? "border-brand bg-brand-soft shadow-sm"
+                        : "border-border hover:border-brand-muted hover:bg-brand-soft/40"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -540,7 +567,7 @@ export default function BookingPage() {
               </div>
 
               {formData.serviceIds.length > 0 && (
-                <div className="bg-pink-50 rounded-lg p-3 text-sm flex items-center justify-between">
+                <div className="bg-brand-soft rounded-lg p-3 text-sm flex items-center justify-between">
                   <span className="text-muted-foreground">
                     {formData.serviceIds.length} servicio{formData.serviceIds.length > 1 ? "s" : ""}
                   </span>
@@ -572,7 +599,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: FECHA + HORA ───── */}
         {step === "datetime" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <CalendarDays className="h-5 w-5" />
@@ -596,9 +623,10 @@ export default function BookingPage() {
                     Horarios — {new Date(formData.date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
                   </Label>
                   {slotsLoading ? (
-                    <div className="text-sm text-muted-foreground py-3 text-center">
-                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-1" />
-                      Buscando horarios...
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2" aria-busy="true">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="h-9 rounded-lg bg-muted animate-pulse" />
+                      ))}
                     </div>
                   ) : slotsReason ? (
                     <div className="text-sm text-muted-foreground py-3 bg-muted/30 rounded-lg px-3 text-center">
@@ -609,19 +637,25 @@ export default function BookingPage() {
                       No hay horarios disponibles. Probá otro día.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                      {availableSlots.map((slot) => (
-                        <Button
-                          key={slot}
-                          variant={formData.startTime === slot ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setFormData({ ...formData, startTime: slot })}
-                          className={`text-sm h-9 ${formData.startTime === slot ? "bg-pink-500 hover:bg-pink-600" : ""}`}
-                        >
-                          {slot}
-                        </Button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                        {availableSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={formData.startTime === slot ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setFormData({ ...formData, startTime: slot })}
+                            aria-pressed={formData.startTime === slot}
+                            className="text-sm h-9"
+                          >
+                            {slot}
+                          </Button>
+                        ))}
+                      </div>
+                      {!formData.startTime && (
+                        <p className="text-center text-xs text-muted-foreground">Tocá un horario para seleccionarlo</p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -644,7 +678,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: CONFIRMACIÓN ───── */}
         {step === "confirm" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg">Confirmá tu turno</CardTitle>
             </CardHeader>
@@ -697,8 +731,8 @@ export default function BookingPage() {
                     onClick={() => setPaymentMethod("cash")}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                       paymentMethod === "cash"
-                        ? "border-pink-400 bg-pink-50 text-pink-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        ? "border-brand bg-brand-soft text-brand"
+                        : "border-border bg-card text-muted-foreground hover:bg-brand-soft/40"
                     }`}
                   >
                     <Banknote className="h-4 w-4" />
@@ -709,8 +743,8 @@ export default function BookingPage() {
                     onClick={() => setPaymentMethod("transfer")}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                       paymentMethod === "transfer"
-                        ? "border-pink-400 bg-pink-50 text-pink-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                        ? "border-brand bg-brand-soft text-brand"
+                        : "border-border bg-card text-muted-foreground hover:bg-brand-soft/40"
                     }`}
                   >
                     <ArrowRightLeft className="h-4 w-4" />
@@ -735,6 +769,7 @@ export default function BookingPage() {
                             }}
                             className="p-1 rounded-md hover:bg-blue-100 transition-colors"
                             title="Copiar alias"
+                            aria-label="Copiar alias"
                           >
                             {aliasCopied ? (
                               <Check className="h-3.5 w-3.5 text-green-600" />
@@ -765,7 +800,7 @@ export default function BookingPage() {
                 <Button variant="outline" onClick={() => setStep("datetime")} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-1" /> Volver
                 </Button>
-                <Button onClick={handleFinalSubmit} disabled={loading || !paymentMethod} className="flex-1 bg-pink-500 hover:bg-pink-600">
+                <Button onClick={handleFinalSubmit} disabled={loading || !paymentMethod} className="flex-1">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Confirmar Turno
                 </Button>
@@ -776,7 +811,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: ÉXITO ───── */}
         {step === "success" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardContent className="py-10 text-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
               <h2 className="text-2xl font-bold text-green-600">¡Turno Confirmado!</h2>
@@ -797,7 +832,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: CANCELAR - CONFIRMAR ───── */}
         {step === "cancel-confirm" && cancelTarget && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg text-red-600">Cancelar turno</CardTitle>
             </CardHeader>
@@ -838,7 +873,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: CANCELAR - ÉXITO ───── */}
         {step === "cancel-success" && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardContent className="py-10 text-center space-y-4">
               <XCircle className="h-16 w-16 text-green-500 mx-auto" />
               <h2 className="text-2xl font-bold text-green-600">
@@ -861,7 +896,6 @@ export default function BookingPage() {
               )}
 
               <Button
-                className="bg-pink-500 hover:bg-pink-600"
                 onClick={() => {
                   setFormData({
                     firstName: client?.firstName || "",
@@ -884,7 +918,7 @@ export default function BookingPage() {
 
         {/* ───── STEP: REPROGRAMAR ───── */}
         {step === "reschedule" && rescheduleTarget && (
-          <Card>
+          <Card className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <CalendarDays className="h-5 w-5" />
@@ -915,9 +949,10 @@ export default function BookingPage() {
                     Horarios — {new Date(formData.date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
                   </Label>
                   {slotsLoading ? (
-                    <div className="text-sm text-muted-foreground py-3 text-center">
-                      <Loader2 className="h-4 w-4 animate-spin inline-block mr-1" />
-                      Buscando horarios...
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2" aria-busy="true">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="h-9 rounded-lg bg-muted animate-pulse" />
+                      ))}
                     </div>
                   ) : slotsReason ? (
                     <div className="text-sm text-muted-foreground py-3 bg-muted/30 rounded-lg px-3 text-center">
@@ -928,19 +963,25 @@ export default function BookingPage() {
                       No hay horarios disponibles. Probá otro día.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                      {availableSlots.map((slot) => (
-                        <Button
-                          key={slot}
-                          variant={formData.startTime === slot ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setFormData({ ...formData, startTime: slot })}
-                          className={`text-sm h-9 ${formData.startTime === slot ? "bg-pink-500 hover:bg-pink-600" : ""}`}
-                        >
-                          {slot}
-                        </Button>
-                      ))}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                        {availableSlots.map((slot) => (
+                          <Button
+                            key={slot}
+                            variant={formData.startTime === slot ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setFormData({ ...formData, startTime: slot })}
+                            aria-pressed={formData.startTime === slot}
+                            className="text-sm h-9"
+                          >
+                            {slot}
+                          </Button>
+                        ))}
+                      </div>
+                      {!formData.startTime && (
+                        <p className="text-center text-xs text-muted-foreground">Tocá un horario para seleccionarlo</p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -952,7 +993,7 @@ export default function BookingPage() {
                 <Button
                   onClick={handleRescheduleSubmit}
                   disabled={!formData.startTime || loading}
-                  className="flex-1 bg-pink-500 hover:bg-pink-600"
+                  className="flex-1"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Confirmar reprogramación
