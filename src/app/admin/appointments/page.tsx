@@ -31,6 +31,9 @@ import {
   ArrowRightLeft,
   CircleDollarSign,
   MessageCircle,
+  Pencil,
+  Mail,
+  Globe,
 } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
@@ -63,6 +66,8 @@ interface Appointment {
   cancelReason: string | null
   paymentMethod: string | null
   paid: boolean
+  emailSent: boolean
+  calendarEventId: string | null
   client: Client
   services: { service: Service }[]
 }
@@ -109,6 +114,15 @@ export default function AppointmentsPage() {
   const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
   const [notesValue, setNotesValue] = useState("")
   const [lastCreated, setLastCreated] = useState<{ id: string; clientName: string; phone: string | null; date: string; startTime: string; endTime: string; services: string; totalPrice: number } | null>(null)
+
+  // Edit dialog
+  const [editDialog, setEditDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
+  const [editForm, setEditForm] = useState({
+    clientId: "",
+    date: "",
+    startTime: "10:00",
+    serviceIds: [] as string[],
+  })
 
   function getTodayStr(): string {
     const d = new Date()
@@ -262,6 +276,50 @@ export default function AppointmentsPage() {
     fetchData()
   }
 
+  function openEdit(apt: Appointment) {
+    setEditDialog({ open: true, apt })
+    setEditForm({
+      clientId: apt.client.id,
+      date: apt.date,
+      startTime: apt.startTime,
+      serviceIds: apt.services.map((s) => s.service.id || (s as { service: { id: string } }).service.id),
+    })
+  }
+
+  function toggleEditService(serviceId: string) {
+    setEditForm((prev) => ({
+      ...prev,
+      serviceIds: prev.serviceIds.includes(serviceId)
+        ? prev.serviceIds.filter((id) => id !== serviceId)
+        : [...prev.serviceIds, serviceId],
+    }))
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editDialog.apt) return
+
+    const res = await fetch(`/api/appointments/${editDialog.apt.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: editForm.clientId,
+        date: editForm.date,
+        startTime: editForm.startTime,
+        serviceIds: editForm.serviceIds,
+      }),
+    })
+
+    if (res.ok) {
+      toast.add({ type: "success", title: "Turno actualizado" })
+      setEditDialog({ open: false, apt: null })
+      fetchData()
+    } else {
+      const data = await res.json().catch(() => null)
+      toast.add({ type: "error", title: "Error", description: data?.error || "No se pudo actualizar el turno." })
+    }
+  }
+
   function toggleService(serviceId: string) {
     setForm((prev) => ({
       ...prev,
@@ -364,17 +422,26 @@ export default function AppointmentsPage() {
                         <div className="font-semibold text-gray-900 truncate text-[15px]">
                           {apt.client.firstName} {apt.client.lastName}
                         </div>
-                        <button
-                          onClick={() => openNotes(apt)}
-                          className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md transition-colors ${
-                            apt.notes
-                              ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
-                              : "text-muted-foreground hover:bg-gray-100"
-                          }`}
-                          title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => openEdit(apt)}
+                            className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-gray-100 transition-colors"
+                            title="Editar turno"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => openNotes(apt)}
+                            className={`h-7 w-7 inline-flex items-center justify-center rounded-md transition-colors ${
+                              apt.notes
+                                ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                                : "text-muted-foreground hover:bg-gray-100"
+                            }`}
+                            title={apt.notes ? `Nota: ${apt.notes}` : "Agregar nota"}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       <div className="text-sm text-muted-foreground truncate mt-0.5">
                         {apt.services.map((s) => s.service.name).join(", ")}
@@ -428,6 +495,16 @@ export default function AppointmentsPage() {
                         <CircleDollarSign className="h-3.5 w-3.5" />
                         <span>Confirmar</span>
                       </button>
+                    )}
+                    {apt.emailSent && (
+                      <div className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md bg-green-50 border border-green-200 text-green-600" title="Email de confirmación enviado">
+                        <Mail className="h-4 w-4" />
+                      </div>
+                    )}
+                    {apt.calendarEventId && (
+                      <div className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md bg-blue-50 border border-blue-200 text-blue-600" title="Sincronizado con Google Calendar">
+                        <Globe className="h-4 w-4" />
+                      </div>
                     )}
                   </div>
 
@@ -581,6 +658,73 @@ export default function AppointmentsPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Appointment Dialog */}
+      <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, apt: null })}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Turno {editDialog.apt?.identifier}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Cliente *</Label>
+              <Select value={editForm.clientId} onValueChange={(v) => setEditForm({ ...editForm, clientId: v || "" })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccionar cliente">
+                    {editForm.clientId && clients.find((c) => c.id === editForm.clientId)
+                      ? `${clients.find((c) => c.id === editForm.clientId)!.firstName} ${clients.find((c) => c.id === editForm.clientId)!.lastName}`
+                      : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin tel."})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fecha *</Label>
+                <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Hora *</Label>
+                <Input type="time" value={editForm.startTime} onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })} required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Servicios *</Label>
+              <div className="flex flex-wrap gap-2">
+                {services.map((s) => (
+                  <Button
+                    key={s.id}
+                    type="button"
+                    variant={editForm.serviceIds.includes(s.id) ? "default" : "outline"}
+                    onClick={() => toggleEditService(s.id)}
+                    className="text-sm"
+                  >
+                    {s.name} - ${s.price.toLocaleString("es-AR")}
+                  </Button>
+                ))}
+              </div>
+              {editForm.serviceIds.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  Total: ${services.filter((s) => editForm.serviceIds.includes(s.id)).reduce((sum, s) => sum + s.price, 0).toLocaleString("es-AR")} · {services.filter((s) => editForm.serviceIds.includes(s.id)).reduce((sum, s) => sum + s.duration, 0)} min
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" type="button" onClick={() => setEditDialog({ open: false, apt: null })} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={!editForm.clientId || editForm.serviceIds.length === 0} className="flex-1">
+                Guardar Cambios
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
