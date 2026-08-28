@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Open_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 
@@ -20,7 +20,15 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Gabriela Nails",
   description: "Agendamiento de turnos para manicura",
-  icons: { icon: "/favicon.svg" },
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/icons/icon-192.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#C65860",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -31,6 +39,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans">
         <Toaster>{children}</Toaster>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/sw.js").catch(() => {}); }`,
+          }}
+        />
       </body>
     </html>
   );

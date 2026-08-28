@@ -41,8 +41,7 @@ export async function PUT(
 
       const newDate = date || current.date
       const newClientId = clientId || current.clientId
-      let newServiceIds = serviceIds
-      let newStartTime = startTime || current.startTime
+      const newStartTime = startTime || current.startTime
       let newEndTime = current.endTime
       let newTotalPrice = current.totalPrice
 
