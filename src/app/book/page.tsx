@@ -341,7 +341,7 @@ export default function BookingPage() {
             <CardContent>
               <form onSubmit={handlePhoneSubmit} className="space-y-4">
                 <Input
-                  placeholder="Ingresá tu teléfono"
+                  placeholder="3855123456"
                   value={phone}
                   onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 15); setPhone(v); }}
                   inputMode="tel"
