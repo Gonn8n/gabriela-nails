@@ -35,11 +35,17 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
 
 export default function DashboardPage() {
   const [range, setRange] = useState("today")
-  const { data, loading, fetchData } = useDashboardCache()
+  const { data, loading, fetchData, invalidate } = useDashboardCache()
 
   useEffect(() => {
+    invalidate()
     fetchData(range)
-  }, [range, fetchData])
+  }, [range, fetchData, invalidate])
+
+  function formatDate(dateStr: string) {
+    const [y, m, d] = dateStr.split("-")
+    return `${d}/${m}`
+  }
 
   if (loading || !data) {
     return <div className="text-center py-8">Cargando dashboard...</div>
@@ -170,7 +176,8 @@ export default function DashboardPage() {
               {data.todayAppointments.map((apt) => (
                 <div key={apt.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="text-center shrink-0 w-12">
+                    <div className="text-center shrink-0 w-16">
+                      <div className="text-[10px] text-muted-foreground font-medium">{formatDate(apt.date)}</div>
                       <div className="text-sm font-bold">{apt.startTime}</div>
                       <div className="text-[10px] text-muted-foreground">{apt.endTime}</div>
                     </div>
