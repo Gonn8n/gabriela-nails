@@ -114,6 +114,7 @@ export default function AppointmentsPage() {
   const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
   const [notesValue, setNotesValue] = useState("")
   const [clientSearch, setClientSearch] = useState("")
+  const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [lastCreated, setLastCreated] = useState<{ id: string; clientName: string; phone: string | null; date: string; startTime: string; endTime: string; services: string; totalPrice: number } | null>(null)
 
   // Edit dialog
@@ -141,6 +142,17 @@ export default function AppointmentsPage() {
   useEffect(() => {
     fetchData()
   }, [debouncedSearch, statusFilter])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement
+      if (!target.closest("[data-client-dropdown]")) {
+        setShowClientDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   async function fetchData() {
     const params = new URLSearchParams()
@@ -574,31 +586,40 @@ export default function AppointmentsPage() {
             <DialogTitle>Nuevo Turno</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2 relative" data-client-dropdown>
               <Label>Cliente *</Label>
               <Input
                 placeholder="Buscar por nombre, apellido o teléfono..."
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
+                value={form.clientId ? `${clients.find((c) => c.id === form.clientId)?.firstName} ${clients.find((c) => c.id === form.clientId)?.lastName}` : clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value)
+                  setForm({ ...form, clientId: "" })
+                  setShowClientDropdown(true)
+                }}
+                onFocus={() => { if (!form.clientId) setShowClientDropdown(true) }}
               />
-              <Select value={form.clientId} onValueChange={(v) => setForm({ ...form, clientId: v || "" })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccionar cliente">
-                    {form.clientId && clients.find((c) => c.id === form.clientId)
-                      ? `${clients.find((c) => c.id === form.clientId)!.firstName} ${clients.find((c) => c.id === form.clientId)!.lastName} (${clients.find((c) => c.id === form.clientId)!.phone || "sin teléfono"})`
-                      : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
+              {showClientDropdown && !form.clientId && (
+                <div className="absolute z-50 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {filteredClients.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes</div>
                   ) : (
                     filteredClients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin teléfono"})</SelectItem>
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, clientId: c.id })
+                          setClientSearch("")
+                          setShowClientDropdown(false)
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                      >
+                        {c.firstName} {c.lastName} ({c.phone || "sin tel."})
+                      </button>
                     ))
                   )}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -690,31 +711,40 @@ export default function AppointmentsPage() {
             <DialogTitle>Editar Turno {editDialog.apt?.identifier}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-2 relative" data-client-dropdown>
               <Label>Cliente *</Label>
               <Input
                 placeholder="Buscar por nombre, apellido o teléfono..."
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
+                value={editForm.clientId ? `${clients.find((c) => c.id === editForm.clientId)?.firstName} ${clients.find((c) => c.id === editForm.clientId)?.lastName}` : clientSearch}
+                onChange={(e) => {
+                  setClientSearch(e.target.value)
+                  setEditForm({ ...editForm, clientId: "" })
+                  setShowClientDropdown(true)
+                }}
+                onFocus={() => { if (!editForm.clientId) setShowClientDropdown(true) }}
               />
-              <Select value={editForm.clientId} onValueChange={(v) => setEditForm({ ...editForm, clientId: v || "" })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Seleccionar cliente">
-                    {editForm.clientId && clients.find((c) => c.id === editForm.clientId)
-                      ? `${clients.find((c) => c.id === editForm.clientId)!.firstName} ${clients.find((c) => c.id === editForm.clientId)!.lastName}`
-                      : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
+              {showClientDropdown && !editForm.clientId && (
+                <div className="absolute z-50 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {filteredClients.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes</div>
                   ) : (
                     filteredClients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin tel."})</SelectItem>
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setEditForm({ ...editForm, clientId: c.id })
+                          setClientSearch("")
+                          setShowClientDropdown(false)
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
+                      >
+                        {c.firstName} {c.lastName} ({c.phone || "sin tel."})
+                      </button>
                     ))
                   )}
-                </SelectContent>
-              </Select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

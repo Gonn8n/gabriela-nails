@@ -38,9 +38,8 @@ export default function DashboardPage() {
   const { data, loading, fetchData, invalidate } = useDashboardCache()
 
   useEffect(() => {
-    invalidate()
     fetchData(range)
-  }, [range, fetchData, invalidate])
+  }, [range, fetchData])
 
   function formatDate(dateStr: string) {
     const [y, m, d] = dateStr.split("-")
