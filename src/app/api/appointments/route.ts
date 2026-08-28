@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { clientId, date, startTime, serviceIds, notes } = body
+    const { clientId, date, startTime, serviceIds, notes, force } = body
 
     if (!clientId || !date || !startTime || !serviceIds?.length) {
       return NextResponse.json(
@@ -88,22 +88,24 @@ export async function POST(request: Request) {
     const endMinutes = startHours * 60 + startMinutes + totalDuration
     const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, "0")}:${(endMinutes % 60).toString().padStart(2, "0")}`
 
-    const { data: conflicting } = await supabase
-      .from("Appointment")
-      .select("id, identifier, client:Client(firstName, lastName)")
-      .eq("date", date)
-      .neq("status", "cancelled")
-      .lt("startTime", endTime)
-      .gt("endTime", startTime)
-      .limit(1)
+    if (!force) {
+      const { data: conflicting } = await supabase
+        .from("Appointment")
+        .select("id, identifier, client:Client(firstName, lastName)")
+        .eq("date", date)
+        .neq("status", "cancelled")
+        .lt("startTime", endTime)
+        .gt("endTime", startTime)
+        .limit(1)
 
-    if (conflicting && conflicting.length > 0) {
-      const conflict = conflicting[0]
-      const client = Array.isArray(conflict.client) ? conflict.client[0] : conflict.client
-      return NextResponse.json(
-        { error: `El horario se superpone con el turno ${conflict.identifier} (${client?.firstName} ${client?.lastName})` },
-        { status: 409 }
-      )
+      if (conflicting && conflicting.length > 0) {
+        const conflict = conflicting[0]
+        const client = Array.isArray(conflict.client) ? conflict.client[0] : conflict.client
+        return NextResponse.json(
+          { error: `El horario se superpone con el turno ${conflict.identifier} (${client?.firstName} ${client?.lastName})`, conflict: true },
+          { status: 409 }
+        )
+      }
     }
 
     const { data: lastAppointment } = await supabase

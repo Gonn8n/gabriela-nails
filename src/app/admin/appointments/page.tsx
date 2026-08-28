@@ -210,11 +210,23 @@ export default function AppointmentsPage() {
     const endTime = `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`
     const servicesStr = selectedSvcs.map((s) => s.name).join(", ")
 
-    const res = await fetch("/api/appointments", {
+    let res = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     })
+
+    if (res.status === 409) {
+      const err = await res.json().catch(() => null)
+      const ok = window.confirm(`${err?.error || "Hay un conflicto de horario"}\n\n¿Desea crearlo de todas formas?`)
+      if (!ok) return
+      res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, force: true }),
+      })
+    }
+
     if (res.ok) {
       const created = await res.json()
       toast.add({ type: "success", title: "Turno creado" })
@@ -314,7 +326,7 @@ export default function AppointmentsPage() {
     e.preventDefault()
     if (!editDialog.apt) return
 
-    const res = await fetch(`/api/appointments/${editDialog.apt.id}`, {
+    let res = await fetch(`/api/appointments/${editDialog.apt.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -324,6 +336,23 @@ export default function AppointmentsPage() {
         serviceIds: editForm.serviceIds,
       }),
     })
+
+    if (res.status === 409) {
+      const err = await res.json().catch(() => null)
+      const ok = window.confirm(`${err?.error || "Hay un conflicto de horario"}\n\n¿Desea guardarlo de todas formas?`)
+      if (!ok) return
+      res = await fetch(`/api/appointments/${editDialog.apt.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: editForm.clientId,
+          date: editForm.date,
+          startTime: editForm.startTime,
+          serviceIds: editForm.serviceIds,
+          force: true,
+        }),
+      })
+    }
 
     if (res.ok) {
       toast.add({ type: "success", title: "Turno actualizado" })

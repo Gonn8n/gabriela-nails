@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, notes, paymentMethod, paid, date, startTime, clientId, serviceIds } = body
+    const { status, notes, paymentMethod, paid, date, startTime, clientId, serviceIds, force } = body
 
     const updateData: Record<string, unknown> = {}
 
@@ -105,18 +105,25 @@ export async function PUT(
       }
 
       // Check conflicts (exclude self)
-      const { data: conflicting } = await supabase
-        .from("Appointment")
-        .select("id")
-        .eq("date", newDate)
-        .neq("status", "cancelled")
-        .neq("id", id)
-        .lt("startTime", newEndTime)
-        .gt("endTime", newStartTime)
-        .limit(1)
+      if (!force) {
+        const { data: conflicting } = await supabase
+          .from("Appointment")
+          .select("id, identifier, client:Client(firstName, lastName)")
+          .eq("date", newDate)
+          .neq("status", "cancelled")
+          .neq("id", id)
+          .lt("startTime", newEndTime)
+          .gt("endTime", newStartTime)
+          .limit(1)
 
-      if (conflicting && conflicting.length > 0) {
-        return NextResponse.json({ error: "El horario seleccionado ya está ocupado" }, { status: 409 })
+        if (conflicting && conflicting.length > 0) {
+          const conflict = conflicting[0]
+          const client = Array.isArray(conflict.client) ? conflict.client[0] : conflict.client
+          return NextResponse.json(
+            { error: `El horario se superpone con el turno ${conflict.identifier} (${client?.firstName} ${client?.lastName})`, conflict: true },
+            { status: 409 }
+          )
+        }
       }
 
       // Check blocked slots
