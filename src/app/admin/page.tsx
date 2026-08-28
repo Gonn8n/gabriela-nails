@@ -4,9 +4,16 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Users, DollarSign, Clock, RefreshCw, CircleDollarSign, AlertTriangle } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Calendar, Users, DollarSign, Clock, RefreshCw, CircleDollarSign, AlertTriangle, MessageCircle, Pencil, CheckCircle, XCircle } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { useDashboardCache } from "@/hooks/use-dashboard-cache"
+import { toast } from "@/components/ui/toast"
 
 const RANGE_OPTIONS = [
   { value: "today", label: "Hoy" },
@@ -33,9 +40,23 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | 
   rescheduled: "outline",
 }
 
+interface DashboardAppointment {
+  id: string
+  identifier: string
+  date: string
+  startTime: string
+  endTime: string
+  status: string
+  totalPrice: number
+  paid: boolean
+  client: { firstName: string; lastName: string } | null
+  services: { service: { name: string; color: string } }[]
+}
+
 export default function DashboardPage() {
   const [range, setRange] = useState("today")
   const { data, loading, fetchData, invalidate } = useDashboardCache()
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; apt: DashboardAppointment | null }>({ open: false, apt: null })
 
   useEffect(() => {
     fetchData(range)
@@ -44,6 +65,35 @@ export default function DashboardPage() {
   function formatDate(dateStr: string) {
     const [y, m, d] = dateStr.split("-")
     return `${d}/${m}`
+  }
+
+  function formatDateLong(dateStr: string) {
+    const date = new Date(dateStr + "T12:00:00")
+    return date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  }
+
+  async function changeStatus(id: string, status: string) {
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    if (res.ok) {
+      toast.add({ type: "success", title: "Estado actualizado" })
+      setDetailDialog({ open: false, apt: null })
+      invalidate()
+      fetchData(range)
+    } else {
+      toast.add({ type: "error", title: "Error", description: "No se pudo actualizar el estado." })
+    }
+  }
+
+  function sendWhatsApp(apt: DashboardAppointment) {
+    const clientName = apt.client?.firstName || "Cliente"
+    const services = apt.services.map((s) => s.service.name).join(", ")
+    const [y, m, d] = apt.date.split("-")
+    const msg = `Hola ${clientName}, te confirmamos tu turno:\n\n📅 Fecha: ${d}/${m}\n⏰ Hora: ${apt.startTime} - ${apt.endTime}\n💅 Servicios: ${services}\n💰 Total: $${apt.totalPrice.toLocaleString("es-AR")}\n\n¡Te esperamos!\nGabriela Nails`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank")
   }
 
   if (loading || !data) {
@@ -173,7 +223,11 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {data.todayAppointments.map((apt) => (
-                <div key={apt.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3">
+                <div
+                  key={apt.id}
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3 cursor-pointer hover:bg-muted/50 transition-colors select-none"
+                  onDoubleClick={() => setDetailDialog({ open: true, apt })}
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="text-center shrink-0 w-16">
                       <div className="text-[10px] text-muted-foreground font-medium">{formatDate(apt.date)}</div>
@@ -181,8 +235,8 @@ export default function DashboardPage() {
                       <div className="text-[10px] text-muted-foreground">{apt.endTime}</div>
                     </div>
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">{apt.client.firstName} {apt.client.lastName}</div>
-                      <div className="text-xs text-muted-foreground truncate">
+                      <div className="font-medium text-sm">{apt.client.firstName} {apt.client.lastName}</div>
+                      <div className="text-xs text-muted-foreground">
                         {apt.services.map((s) => s.service.name).join(", ")}
                       </div>
                     </div>
@@ -202,6 +256,111 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Dialog */}
+      <Dialog open={detailDialog.open} onOpenChange={(open) => setDetailDialog({ open, apt: null })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {detailDialog.apt?.identifier}
+              <Badge variant={STATUS_VARIANTS[detailDialog.apt?.status || "default"]} className="text-xs">
+                {STATUS_LABELS[detailDialog.apt?.status || ""]}
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {detailDialog.apt && (
+            <div className="space-y-4">
+              {/* Cliente */}
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Cliente</div>
+                <div className="font-medium">{detailDialog.apt.client?.firstName} {detailDialog.apt.client?.lastName}</div>
+              </div>
+
+              {/* Fecha y hora */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Fecha</div>
+                  <div className="font-medium text-sm">{formatDateLong(detailDialog.apt.date)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Horario</div>
+                  <div className="font-medium text-sm">{detailDialog.apt.startTime} - {detailDialog.apt.endTime}</div>
+                </div>
+              </div>
+
+              {/* Servicios */}
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Servicios</div>
+                <div className="space-y-1">
+                  {detailDialog.apt.services.map((s, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.service.color }} />
+                      {s.service.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total y pago */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="text-xs text-muted-foreground">Total</div>
+                <div className="text-lg font-bold">${detailDialog.apt.totalPrice.toLocaleString("es-AR")}</div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-muted-foreground">Estado de cobro</div>
+                <div className="flex items-center gap-1.5">
+                  <CircleDollarSign className={`h-4 w-4 ${detailDialog.apt.paid ? "text-emerald-500" : "text-amber-400"}`} />
+                  <span className="text-sm font-medium">{detailDialog.apt.paid ? "Cobrado" : "Sin cobrar"}</span>
+                </div>
+              </div>
+
+              {/* Acciones */}
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => sendWhatsApp(detailDialog.apt!)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  WhatsApp
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => window.location.href = "/admin/appointments"}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+              </div>
+              {detailDialog.apt.status === "booked" && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    onClick={() => changeStatus(detailDialog.apt!.id, "completed")}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Finalizar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => changeStatus(detailDialog.apt!.id, "cancelled")}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
