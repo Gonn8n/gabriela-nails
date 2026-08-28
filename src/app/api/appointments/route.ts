@@ -92,8 +92,9 @@ export async function POST(request: Request) {
 
     if (conflicting && conflicting.length > 0) {
       const conflict = conflicting[0]
+      const client = Array.isArray(conflict.client) ? conflict.client[0] : conflict.client
       return NextResponse.json(
-        { error: `El horario se superpone con el turno ${conflict.identifier} (${(conflict.client as { firstName: string; lastName: string })?.firstName} ${(conflict.client as { firstName: string; lastName: string })?.lastName})` },
+        { error: `El horario se superpone con el turno ${conflict.identifier} (${client?.firstName} ${client?.lastName})` },
         { status: 409 }
       )
     }
