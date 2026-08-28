@@ -241,6 +241,7 @@ export async function POST(request: Request) {
         startTime,
         endTime,
         clientName: `${appointment.client.firstName} ${appointment.client.lastName}`,
+        clientEmail: appointment.client.email,
         services: servicesList,
         totalPrice,
         appointmentId: id,

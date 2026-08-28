@@ -165,6 +165,7 @@ export async function PUT(
         startTime: appointment.startTime,
         endTime: appointment.endTime,
         clientName: `${appointment.client.firstName} ${appointment.client.lastName}`,
+        clientEmail: appointment.client.email,
         services: servicesList,
         totalPrice: appointment.totalPrice,
         appointmentId: appointment.id,

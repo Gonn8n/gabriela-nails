@@ -9,6 +9,7 @@ interface CalendarEventData {
   startTime: string
   endTime: string
   clientName: string
+  clientEmail: string | null
   services: string
   totalPrice: number
   appointmentId: string
@@ -44,6 +45,7 @@ export async function createCalendarEvent(
           time: data.endTime,
           timeZone: "America/Argentina/Cordoba",
         },
+        attendees: data.clientEmail ? [{ email: data.clientEmail }] : undefined,
         extendedProperties: {
           private: {
             appointmentId: data.appointmentId,
