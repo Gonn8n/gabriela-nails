@@ -23,7 +23,9 @@ export async function GET(request: Request) {
       endDate = todayStr
     } else {
       const days = parseInt(range) || 7
-      startDate = todayStr
+      const start = new Date(now)
+      start.setDate(start.getDate() - days)
+      startDate = getLocalDateStr(start)
       const end = new Date(now)
       end.setDate(end.getDate() + days)
       endDate = getLocalDateStr(end)
