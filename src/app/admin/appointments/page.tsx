@@ -113,6 +113,7 @@ export default function AppointmentsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notesDialog, setNotesDialog] = useState<{ open: boolean; apt: Appointment | null }>({ open: false, apt: null })
   const [notesValue, setNotesValue] = useState("")
+  const [clientSearch, setClientSearch] = useState("")
   const [lastCreated, setLastCreated] = useState<{ id: string; clientName: string; phone: string | null; date: string; startTime: string; endTime: string; services: string; totalPrice: number } | null>(null)
 
   // Edit dialog
@@ -171,6 +172,7 @@ export default function AppointmentsPage() {
       notes: "",
     })
     setLastCreated(null)
+    setClientSearch("")
     setDialogOpen(true)
   }
 
@@ -284,6 +286,7 @@ export default function AppointmentsPage() {
       startTime: apt.startTime,
       serviceIds: apt.services.map((s) => s.service.id || (s as { service: { id: string } }).service.id),
     })
+    setClientSearch("")
   }
 
   function toggleEditService(serviceId: string) {
@@ -333,6 +336,16 @@ export default function AppointmentsPage() {
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0)
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0)
 
+  const filteredClients = clients.filter((c) => {
+    if (!clientSearch) return true
+    const q = clientSearch.toLowerCase()
+    return (
+      c.firstName.toLowerCase().includes(q) ||
+      c.lastName.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q))
+    )
+  })
+
   function formatDate(dateStr: string) {
     const [y, m, d] = dateStr.split("-")
     return `${d}/${m}`
@@ -357,7 +370,7 @@ export default function AppointmentsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar..."
+            placeholder="Buscar por nombre, teléfono o ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -563,6 +576,11 @@ export default function AppointmentsPage() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-2">
               <Label>Cliente *</Label>
+              <Input
+                placeholder="Buscar por nombre, apellido o teléfono..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+              />
               <Select value={form.clientId} onValueChange={(v) => setForm({ ...form, clientId: v || "" })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Seleccionar cliente">
@@ -572,9 +590,13 @@ export default function AppointmentsPage() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin teléfono"})</SelectItem>
-                  ))}
+                  {filteredClients.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes</div>
+                  ) : (
+                    filteredClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin teléfono"})</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -670,6 +692,11 @@ export default function AppointmentsPage() {
           <form onSubmit={handleEditSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Cliente *</Label>
+              <Input
+                placeholder="Buscar por nombre, apellido o teléfono..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+              />
               <Select value={editForm.clientId} onValueChange={(v) => setEditForm({ ...editForm, clientId: v || "" })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Seleccionar cliente">
@@ -679,9 +706,13 @@ export default function AppointmentsPage() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin tel."})</SelectItem>
-                  ))}
+                  {filteredClients.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No se encontraron clientes</div>
+                  ) : (
+                    filteredClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName} ({c.phone || "sin tel."})</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

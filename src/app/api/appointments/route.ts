@@ -19,13 +19,20 @@ export async function GET(request: Request) {
       query = query.eq("status", status)
     }
 
-    if (search) {
-      query = query.or(`identifier.ilike.%${search}%,client.firstName.ilike.%${search}%,client.lastName.ilike.%${search}%,client.phone.ilike.%${search}%`)
-    }
-
     const { data: appointments } = await query
 
-    const result = (appointments || []).map((apt) => ({
+    let filtered = appointments || []
+    if (search) {
+      const q = search.toLowerCase()
+      filtered = filtered.filter((apt) => (
+        apt.identifier?.toLowerCase().includes(q) ||
+        apt.client?.firstName?.toLowerCase().includes(q) ||
+        apt.client?.lastName?.toLowerCase().includes(q) ||
+        apt.client?.phone?.includes(q)
+      ))
+    }
+
+    const result = filtered.map((apt) => ({
       id: apt.id,
       identifier: apt.identifier,
       date: apt.date,
