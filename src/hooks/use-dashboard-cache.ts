@@ -12,8 +12,8 @@ interface DashboardData {
     status: string
     totalPrice: number
     paid: boolean
-    client: { firstName: string; lastName: string }
-    services: { service: { name: string; color: string } }[]
+    client: { id: string; firstName: string; lastName: string; phone: string | null; email: string | null } | null
+    services: { serviceId: string; service: { id: string; name: string; color: string; price: number; duration: number } }[]
   }[]
   upcomingCount: number
   completedCount: number

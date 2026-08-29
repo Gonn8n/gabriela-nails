@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     const { data: appointments } = await supabase
       .from("Appointment")
-      .select("*, client:Client(id, firstName, lastName), services:AppointmentService(id, service:Service(name, color))")
+      .select("*, client:Client(id, firstName, lastName, phone, email), services:AppointmentService(serviceId, service:Service(id, name, color, price, duration))")
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: false })
