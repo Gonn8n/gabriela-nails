@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, Loader2, ArrowLeft, ArrowRight, CalendarDays, Clock, AlertTriangle, XCircle, Banknote, ArrowRightLeft, Copy, Check } from "lucide-react"
+import { CheckCircle, Loader2, ArrowLeft, ArrowRight, CalendarDays, Clock, AlertTriangle, XCircle, Banknote, ArrowRightLeft, Copy, Check, MapPin, MessageCircle } from "lucide-react"
 import { BookingCalendar } from "@/components/booking-calendar"
 import { toast } from "@/components/ui/toast"
+import { cn } from "@/lib/utils"
 
 interface Service {
   id: string
@@ -1001,6 +1002,39 @@ export default function BookingPage() {
           </Card>
         )}
       </div>
+
+      {/* ───── FOOTER ───── */}
+      <footer className="max-w-lg mx-auto px-1 pb-2">
+        <div className="border-t pt-5 space-y-3">
+          <a
+            href="https://www.google.com/maps/search/-27.828931,+-64.249253"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start justify-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors text-center"
+          >
+            <MapPin className="h-4 w-4 text-brand shrink-0 mt-0.5" />
+            <span>Sector A · Grupo B · Fracción 21 · Dpto 62 — Barrio Ejército Argentino, Santiago del Estero</span>
+          </a>
+          <div className="flex items-center justify-center gap-2">
+            <a
+              href="https://www.google.com/maps/search/-27.828931,+-64.249253"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs h-8")}
+            >
+              <MapPin className="h-3.5 w-3.5" /> Ver mapa
+            </a>
+            <a
+              href="https://wa.me/543854729522?text=Hola!%20Quiero%20consultar%20por%20turnos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ size: "sm" }), "text-xs h-8 bg-[#25D366] hover:bg-[#1fb955] text-white border-transparent")}
+            >
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
