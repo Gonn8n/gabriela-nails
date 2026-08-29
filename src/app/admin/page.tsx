@@ -236,19 +236,21 @@ export default function DashboardPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium text-sm">{apt.client.firstName} {apt.client.lastName}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground line-clamp-1">
                         {apt.services.map((s) => s.service.name).join(", ")}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-col items-end shrink-0">
                     <Badge variant={STATUS_VARIANTS[apt.status] || "default"} className="text-[10px]">
                       {STATUS_LABELS[apt.status] || apt.status}
                     </Badge>
-                    {apt.status === "completed" && (
-                      <CircleDollarSign className={`h-4 w-4 ${apt.paid ? "text-emerald-500" : "text-amber-400"}`} />
-                    )}
-                    <span className="text-sm font-medium">${apt.totalPrice.toFixed(0)}</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {apt.status === "completed" && (
+                        <CircleDollarSign className={`h-3.5 w-3.5 ${apt.paid ? "text-emerald-500" : "text-amber-400"}`} />
+                      )}
+                      <span className="text-sm font-medium">${apt.totalPrice.toFixed(0)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
