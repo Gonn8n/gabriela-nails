@@ -77,7 +77,9 @@ function buildConfirmationHtml(apt: AppointmentData, client: ClientData): string
 
       <div style="margin-top:24px;text-align:center;">
         <p style="color:#4b5563;font-size:13px;margin:0 0 4px;">
-          📍 Sector A · Grupo B · Fracción 21 · Dpto 62 — Barrio Ejército Argentino, Santiago del Estero
+          📍 Sector A · Grupo B · Fracción 21 · Dpto 62
+          <br />
+          Bº Ejército Argentino, Santiago del Estero
         </p>
         <p style="margin:8px 0 0;">
           <a href="https://www.google.com/maps/search/-27.828931,+-64.249253" style="color:#3b82f6;text-decoration:none;font-size:13px;font-weight:600;">Ver en el mapa</a>

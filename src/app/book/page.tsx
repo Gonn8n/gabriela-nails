@@ -1013,7 +1013,11 @@ export default function BookingPage() {
             className="flex items-start justify-center gap-1.5 text-sm text-muted-foreground hover:text-brand transition-colors text-center"
           >
             <MapPin className="h-4 w-4 text-brand shrink-0 mt-0.5" />
-            <span>Sector A · Grupo B · Fracción 21 · Dpto 62 — Barrio Ejército Argentino, Santiago del Estero</span>
+            <span>
+              Sector A · Grupo B · Fracción 21 · Dpto 62
+              <br />
+              Bº Ejército Argentino, Santiago del Estero
+            </span>
           </a>
           <div className="flex items-center justify-center gap-2">
             <a
