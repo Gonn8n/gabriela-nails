@@ -23,9 +23,7 @@ export async function GET(request: Request) {
       endDate = todayStr
     } else {
       const days = parseInt(range) || 7
-      const start = new Date(now)
-      start.setDate(start.getDate() - days)
-      startDate = getLocalDateStr(start)
+      startDate = todayStr
       const end = new Date(now)
       end.setDate(end.getDate() + days)
       endDate = getLocalDateStr(end)
@@ -59,10 +57,16 @@ export async function GET(request: Request) {
       if (apt.status === "cancelled") {
         cancelledCount++
       } else {
-        if (apt.status === "booked" || apt.status === "confirmed") upcomingCount++
+        const deposit = apt.deposit ?? 0
+
+        // Contar señas de TODOS los turnos no-cancelados
+        if (deposit > 0) {
+          totalDeposits += deposit
+        }
+
+        if (apt.status === "booked" || apt.status === "confirmed" || apt.status === "rescheduled") upcomingCount++
         if (apt.status === "completed") {
           completedCount++
-          const deposit = apt.deposit ?? 0
           const isFullyPaidByDeposit = deposit >= (apt.totalPrice || 0)
 
           if (apt.paid || isFullyPaidByDeposit) {
@@ -70,7 +74,6 @@ export async function GET(request: Request) {
             revenue += apt.totalPrice || 0
           } else if (deposit > 0) {
             partialCount++
-            totalDeposits += deposit
             pendingAmount += (apt.totalPrice || 0) - deposit
           } else {
             unpaidCompletedCount++
