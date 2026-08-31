@@ -26,9 +26,9 @@ import { toast } from "@/components/ui/toast"
 
 const RANGE_OPTIONS = [
   { value: "today", label: "Hoy" },
-  { value: "7", label: "7 días" },
-  { value: "15", label: "15 días" },
-  { value: "30", label: "30 días" },
+  { value: "7", label: "2 semanas" },
+  { value: "15", label: "1 mes" },
+  { value: "30", label: "2 meses" },
 ]
 
 const STATUS_LABELS: Record<string, string> = {
