@@ -71,6 +71,7 @@ interface DashboardAppointment {
   status: string
   totalPrice: number
   paid: boolean
+  deposit: number
   client: DashboardClient | null
   services: DashboardService[]
 }
@@ -97,7 +98,7 @@ export default function DashboardPage() {
   const [editDialog, setEditDialog] = useState<{ open: boolean; apt: DashboardAppointment | null }>({ open: false, apt: null })
   const [allServices, setAllServices] = useState<Service[]>([])
   const [allClients, setAllClients] = useState<Client[]>([])
-  const [editForm, setEditForm] = useState({ clientId: "", date: "", startTime: "10:00", serviceIds: [] as string[] })
+  const [editForm, setEditForm] = useState({ clientId: "", date: "", startTime: "10:00", serviceIds: [] as string[], deposit: 0 })
 
   useEffect(() => {
     fetchData(range)
@@ -129,6 +130,7 @@ export default function DashboardPage() {
       date: apt.date,
       startTime: apt.startTime,
       serviceIds: apt.services.map((s) => s.serviceId),
+      deposit: apt.deposit || 0,
     })
     fetchServicesAndClients()
   }
@@ -153,6 +155,7 @@ export default function DashboardPage() {
         date: editForm.date,
         startTime: editForm.startTime,
         serviceIds: editForm.serviceIds,
+        deposit: editForm.deposit,
       }),
     })
     if (res.ok) {
@@ -416,6 +419,24 @@ export default function DashboardPage() {
                 <div className="text-xs text-muted-foreground">Total</div>
                 <div className="text-lg font-bold">${detailDialog.apt.totalPrice.toLocaleString("es-AR")}</div>
               </div>
+              {detailDialog.apt.deposit > 0 && detailDialog.apt.deposit < detailDialog.apt.totalPrice && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">Seña</div>
+                    <div className="text-sm font-medium text-amber-600">${detailDialog.apt.deposit.toLocaleString("es-AR")}</div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-muted-foreground">Saldo pendiente</div>
+                    <div className="text-sm font-semibold text-amber-600">${(detailDialog.apt.totalPrice - detailDialog.apt.deposit).toLocaleString("es-AR")}</div>
+                  </div>
+                </>
+              )}
+              {detailDialog.apt.deposit >= detailDialog.apt.totalPrice && (
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="text-xs text-muted-foreground">Estado</div>
+                  <div className="text-sm font-bold text-emerald-600">💰 Pagado total</div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">Estado de cobro</div>
                 <div className="flex items-center gap-1.5">
@@ -446,7 +467,7 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               )}
-              {detailDialog.apt.status === "completed" && !detailDialog.apt.paid && (
+              {!detailDialog.apt.paid && (
                 <Button variant="outline" size="sm" className="w-full text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => togglePaid(detailDialog.apt!.id, false)}>
                   <CircleDollarSign className="h-4 w-4 mr-1" />
                   Marcar como cobrado
@@ -503,6 +524,15 @@ export default function DashboardPage() {
               {editForm.serviceIds.length > 0 && (
                 <div className="text-sm text-muted-foreground">
                   Total: ${editTotalPrice.toLocaleString("es-AR")} · {editTotalDuration} min
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Seña ($)</Label>
+              <Input type="number" min="0" step="100" value={editForm.deposit || ""} onChange={(e) => setEditForm({ ...editForm, deposit: Number(e.target.value) || 0 })} placeholder="0" />
+              {editForm.deposit > 0 && editForm.serviceIds.length > 0 && (
+                <div className="text-xs text-amber-600">
+                  Saldo pendiente: ${(editTotalPrice - editForm.deposit).toLocaleString("es-AR")}
                 </div>
               )}
             </div>

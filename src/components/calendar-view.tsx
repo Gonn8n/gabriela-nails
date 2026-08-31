@@ -91,7 +91,7 @@ function isSameDay(a: string, b: Date) {
 }
 
 export function CalendarView() {
-  const [viewMode, setViewMode] = useState<ViewMode>("week")
+  const [viewMode, setViewMode] = useState<ViewMode>("day")
   const [currentDate, setCurrentDate] = useState(new Date())
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)

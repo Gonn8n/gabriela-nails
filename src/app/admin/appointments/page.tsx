@@ -66,6 +66,7 @@ interface Appointment {
   cancelReason: string | null
   paymentMethod: string | null
   paid: boolean
+  deposit: number
   emailSent: boolean
   calendarEventId: string | null
   client: Client
@@ -124,6 +125,7 @@ export default function AppointmentsPage() {
     date: "",
     startTime: "10:00",
     serviceIds: [] as string[],
+    deposit: 0,
   })
 
   function getTodayStr(): string {
@@ -137,6 +139,7 @@ export default function AppointmentsPage() {
     startTime: "10:00",
     serviceIds: [] as string[],
     notes: "",
+    deposit: 0,
   })
 
   useEffect(() => {
@@ -182,6 +185,7 @@ export default function AppointmentsPage() {
       startTime: "10:00",
       serviceIds: [],
       notes: "",
+      deposit: 0,
     })
     setLastCreated(null)
     setClientSearch("")
@@ -309,6 +313,7 @@ export default function AppointmentsPage() {
       date: apt.date,
       startTime: apt.startTime,
       serviceIds: apt.services.map((s) => s.service.id || (s as { service: { id: string } }).service.id),
+      deposit: apt.deposit || 0,
     })
     setClientSearch("")
   }
@@ -334,6 +339,7 @@ export default function AppointmentsPage() {
         date: editForm.date,
         startTime: editForm.startTime,
         serviceIds: editForm.serviceIds,
+        deposit: editForm.deposit,
       }),
     })
 
@@ -349,6 +355,7 @@ export default function AppointmentsPage() {
           date: editForm.date,
           startTime: editForm.startTime,
           serviceIds: editForm.serviceIds,
+          deposit: editForm.deposit,
           force: true,
         }),
       })
@@ -503,6 +510,18 @@ export default function AppointmentsPage() {
                       <div className="text-xs text-muted-foreground/70 mt-1">
                         {apt.identifier} · {apt.endTime} · ${apt.totalPrice.toLocaleString("es-AR")}
                       </div>
+                      {apt.deposit > 0 && apt.deposit < apt.totalPrice && (
+                        <div className="text-xs mt-1">
+                          <span className="text-amber-600 font-medium">💰 Seña: ${apt.deposit.toLocaleString("es-AR")}</span>
+                          <span className="text-muted-foreground/70"> / </span>
+                          <span className="text-amber-600 font-medium">Saldo: ${(apt.totalPrice - apt.deposit).toLocaleString("es-AR")}</span>
+                        </div>
+                      )}
+                      {apt.deposit >= apt.totalPrice && (
+                        <div className="text-xs text-emerald-600 font-medium mt-1">
+                          💰 Pagado total
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -527,20 +546,18 @@ export default function AppointmentsPage() {
                         )}
                       </div>
                     )}
-                    {apt.status === "completed" && (
-                      <button
-                        onClick={() => togglePaid(apt.id, apt.paid)}
-                        className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md border transition-colors ${
-                          apt.paid
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
-                            : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
-                        }`}
-                        title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
-                      >
-                        <CircleDollarSign className="h-4 w-4" />
-                      </button>
-                    )}
-                    {apt.status === "completed" && apt.paymentMethod === "transfer" && !apt.paid && (
+                    <button
+                      onClick={() => togglePaid(apt.id, apt.paid)}
+                      className={`shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md border transition-colors ${
+                        apt.paid
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100"
+                          : "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
+                      }`}
+                      title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
+                    >
+                      <CircleDollarSign className="h-4 w-4" />
+                    </button>
+                    {apt.paymentMethod === "transfer" && !apt.paid && (
                       <button
                         onClick={() => togglePaid(apt.id, false)}
                         className="shrink-0 px-2.5 py-1 rounded-md border bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors text-[10px] font-medium inline-flex items-center gap-1"
@@ -685,6 +702,15 @@ export default function AppointmentsPage() {
               <Label>Notas</Label>
               <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notas adicionales..." />
             </div>
+            <div className="space-y-2">
+              <Label>Seña ($)</Label>
+              <Input type="number" min="0" step="100" value={form.deposit || ""} onChange={(e) => setForm({ ...form, deposit: Number(e.target.value) || 0 })} placeholder="0" />
+              {form.deposit > 0 && form.serviceIds.length > 0 && (
+                <div className="text-xs text-amber-600">
+                  Saldo pendiente: ${(totalPrice - form.deposit).toLocaleString("es-AR")}
+                </div>
+              )}
+            </div>
             {lastCreated ? (
               <div className="flex gap-2">
                 <Button type="button" onClick={sendWhatsApp} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
@@ -803,6 +829,15 @@ export default function AppointmentsPage() {
               {editForm.serviceIds.length > 0 && (
                 <div className="text-sm text-muted-foreground">
                   Total: ${services.filter((s) => editForm.serviceIds.includes(s.id)).reduce((sum, s) => sum + s.price, 0).toLocaleString("es-AR")} · {services.filter((s) => editForm.serviceIds.includes(s.id)).reduce((sum, s) => sum + s.duration, 0)} min
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Seña ($)</Label>
+              <Input type="number" min="0" step="100" value={editForm.deposit || ""} onChange={(e) => setEditForm({ ...editForm, deposit: Number(e.target.value) || 0 })} placeholder="0" />
+              {editForm.deposit > 0 && editForm.serviceIds.length > 0 && (
+                <div className="text-xs text-amber-600">
+                  Saldo pendiente: ${(services.filter((s) => editForm.serviceIds.includes(s.id)).reduce((sum, s) => sum + s.price, 0) - editForm.deposit).toLocaleString("es-AR")}
                 </div>
               )}
             </div>

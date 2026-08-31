@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { status, notes, paymentMethod, paid, date, startTime, clientId, serviceIds, force } = body
+    const { status, notes, paymentMethod, paid, deposit, date, startTime, clientId, serviceIds, force } = body
 
     const updateData: Record<string, unknown> = {}
 
@@ -23,6 +23,7 @@ export async function PUT(
     if (notes !== undefined) updateData.notes = notes
     if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod
     if (paid !== undefined) updateData.paid = paid
+    if (deposit !== undefined) updateData.deposit = deposit
 
     // Full edit: date, time, services, client
     const isFullEdit = date || startTime || clientId || serviceIds

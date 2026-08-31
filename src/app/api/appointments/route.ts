@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { clientId, date, startTime, serviceIds, notes, force } = body
+    const { clientId, date, startTime, serviceIds, notes, deposit, force } = body
 
     if (!clientId || !date || !startTime || !serviceIds?.length) {
       return NextResponse.json(
@@ -132,6 +132,7 @@ export async function POST(request: Request) {
         totalPrice,
         notes: notes || null,
         status: "booked",
+        deposit: deposit || 0,
         createdAt: new Date().toISOString(),
       })
 

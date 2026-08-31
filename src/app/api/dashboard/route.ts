@@ -76,6 +76,7 @@ export async function GET(request: Request) {
           status: apt.status,
           totalPrice: apt.totalPrice,
           paid: apt.paid ?? false,
+          deposit: apt.deposit ?? 0,
           client: apt.client,
           services: apt.services,
         })

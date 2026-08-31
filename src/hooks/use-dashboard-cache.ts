@@ -12,6 +12,7 @@ interface DashboardData {
     status: string
     totalPrice: number
     paid: boolean
+    deposit: number
     client: { id: string; firstName: string; lastName: string; phone: string | null; email: string | null } | null
     services: { serviceId: string; service: { id: string; name: string; color: string; price: number; duration: number } }[]
   }[]
