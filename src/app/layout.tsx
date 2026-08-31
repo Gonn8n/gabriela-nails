@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Gabriela Nails",
     description: "Reservá tu turno online",
-    url: "https://www.gabriela.com.ar",
+    url: "https://www.gabriela.com.ar/",
     siteName: "Gabriela Nails",
     locale: "es_AR",
     type: "website",
