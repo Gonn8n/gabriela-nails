@@ -364,9 +364,17 @@ export default function DashboardPage() {
                       {STATUS_LABELS[apt.status] || apt.status}
                     </Badge>
                     <div className="flex items-center gap-1.5 mt-1">
-                      {apt.status === "completed" && (
-                        <CircleDollarSign className={`h-3.5 w-3.5 ${apt.paid ? "text-emerald-500" : "text-amber-400"}`} />
-                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePaid(apt.id, apt.paid) }}
+                        className={`inline-flex items-center justify-center rounded-md transition-colors ${
+                          apt.paid
+                            ? "text-emerald-500 hover:bg-emerald-50"
+                            : "text-amber-400 hover:bg-amber-50"
+                        }`}
+                        title={apt.paid ? "Cobrado" : "No cobrado — clic para marcar"}
+                      >
+                        <CircleDollarSign className="h-3.5 w-3.5" />
+                      </button>
                       <span className="text-sm font-medium">${apt.totalPrice.toFixed(0)}</span>
                     </div>
                   </div>
@@ -479,7 +487,12 @@ export default function DashboardPage() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, apt: null })}>
+      <Dialog open={editDialog.open} onOpenChange={(open) => {
+        if (!open && editDialog.apt) {
+          setDetailDialog({ open: true, apt: editDialog.apt })
+        }
+        setEditDialog({ open, apt: open ? editDialog.apt : null })
+      }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Turno {editDialog.apt?.identifier}</DialogTitle>
@@ -537,7 +550,11 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" type="button" onClick={() => setEditDialog({ open: false, apt: null })} className="flex-1">
+              <Button variant="outline" type="button" onClick={() => {
+                const apt = editDialog.apt
+                setEditDialog({ open: false, apt: null })
+                if (apt) setDetailDialog({ open: true, apt })
+              }} className="flex-1">
                 Cancelar
               </Button>
               <Button type="submit" disabled={!editForm.clientId || editForm.serviceIds.length === 0} className="flex-1">

@@ -32,7 +32,6 @@ import {
   CircleDollarSign,
   MessageCircle,
   Pencil,
-  Mail,
   Globe,
 } from "lucide-react"
 import { toast } from "@/components/ui/toast"
@@ -566,11 +565,6 @@ export default function AppointmentsPage() {
                         <CircleDollarSign className="h-3.5 w-3.5" />
                         <span>Confirmar</span>
                       </button>
-                    )}
-                    {apt.emailSent && (
-                      <div className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md bg-green-50 border border-green-200 text-green-600" title="Email de confirmación enviado">
-                        <Mail className="h-4 w-4" />
-                      </div>
                     )}
                     {apt.calendarEventId && (
                       <div className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md bg-blue-50 border border-blue-200 text-blue-600" title="Sincronizado con Google Calendar">

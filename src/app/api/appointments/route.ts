@@ -44,6 +44,7 @@ export async function GET(request: Request) {
       cancelReason: apt.cancelReason,
       paymentMethod: apt.paymentMethod,
       paid: apt.paid ?? false,
+      deposit: apt.deposit ?? 0,
       emailSent: apt.emailSent ?? false,
       calendarEventId: apt.calendarEventId ?? null,
       client: apt.client,
