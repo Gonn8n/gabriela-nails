@@ -89,7 +89,7 @@ function buildConfirmationHtml(apt: AppointmentData, client: ClientData): string
       </div>
 
       <p style="color:#9ca3af;font-size:12px;margin-top:16px;text-align:center;">
-        Gabriela Nails · Reservá tu turno en gabriela-nails.vercel.app
+        Gabriela Nails · Reservá tu turno en gabriela.com.ar
       </p>
     </div>
   </body>

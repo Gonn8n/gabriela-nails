@@ -20,6 +20,23 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Gabriela Nails",
   description: "Agendamiento de turnos para manicura",
+  metadataBase: new URL("https://gabriela.com.ar"),
+  openGraph: {
+    title: "Gabriela Nails",
+    description: "Reservá tu turno online",
+    url: "https://gabriela.com.ar",
+    siteName: "Gabriela Nails",
+    locale: "es_AR",
+    type: "website",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "Gabriela Nails",
+      },
+    ],
+  },
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
