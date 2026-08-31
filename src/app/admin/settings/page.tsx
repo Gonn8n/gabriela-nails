@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Save, Plus, Trash2, Clock, CalendarDays, Ban } from "lucide-react"
+import { Save, Plus, Trash2, Clock, CalendarDays, Ban, Bell } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { toast } from "@/components/ui/toast"
 
@@ -24,7 +24,12 @@ interface Settings {
   cancellationHours: number
   breakStart: string
   breakEnd: string
-  workingDays: number[] // 0=Sun, 1=Mon, ..., 6=Sat
+  workingDays: number[]
+  pushNotifications: boolean
+  pushNewBooking: boolean
+  pushCancellation: boolean
+  pushReschedule: boolean
+  pushTodaySummary: boolean
 }
 
 interface BlockedDate {
@@ -43,7 +48,12 @@ const defaultSettings: Settings = {
   cancellationHours: 3,
   breakStart: "12:00",
   breakEnd: "13:00",
-  workingDays: [1, 2, 3, 4, 5, 6], // Mon-Sat by default
+  workingDays: [1, 2, 3, 4, 5, 6],
+  pushNotifications: true,
+  pushNewBooking: true,
+  pushCancellation: true,
+  pushReschedule: true,
+  pushTodaySummary: true,
 }
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -237,7 +247,88 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Row 3: Blocked dates */}
+      {/* Row 3: Notifications */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Notificaciones Push
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Recibí notificaciones en tu celular cuando un cliente reserve, cancele o reprograme un turno.
+          </p>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between cursor-pointer">
+              <div>
+                <div className="text-sm font-medium">Notificaciones push</div>
+                <div className="text-xs text-muted-foreground">Activar o desactivar todas las notificaciones</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.pushNotifications}
+                onChange={(e) => setSettings({ ...settings, pushNotifications: e.target.checked })}
+                className="h-5 w-5 rounded border-gray-300 accent-pink-600"
+              />
+            </label>
+            {settings.pushNotifications && (
+              <>
+                <label className="flex items-center justify-between cursor-pointer pl-4 border-l-2 border-pink-200 ml-2">
+                  <div>
+                    <div className="text-sm">Nuevo turno</div>
+                    <div className="text-xs text-muted-foreground">Cuando un cliente reserva por la web</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.pushNewBooking}
+                    onChange={(e) => setSettings({ ...settings, pushNewBooking: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 accent-pink-600"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer pl-4 border-l-2 border-pink-200 ml-2">
+                  <div>
+                    <div className="text-sm">Cancelación</div>
+                    <div className="text-xs text-muted-foreground">Cuando un cliente cancela</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.pushCancellation}
+                    onChange={(e) => setSettings({ ...settings, pushCancellation: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 accent-pink-600"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer pl-4 border-l-2 border-pink-200 ml-2">
+                  <div>
+                    <div className="text-sm">Reprogramación</div>
+                    <div className="text-xs text-muted-foreground">Cuando un cliente reprograma</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.pushReschedule}
+                    onChange={(e) => setSettings({ ...settings, pushReschedule: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 accent-pink-600"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer pl-4 border-l-2 border-pink-200 ml-2">
+                  <div>
+                    <div className="text-sm">Resumen del día</div>
+                    <div className="text-xs text-muted-foreground">Al abrir la app por la mañana</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.pushTodaySummary}
+                    onChange={(e) => setSettings({ ...settings, pushTodaySummary: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 accent-pink-600"
+                  />
+                </label>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Row 4: Blocked dates */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { sendPushIfEnabled } from "@/lib/push"
 
 // POST: Reprogramar turno público
 export async function POST(request: Request) {
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
 
     const { data: apt } = await supabase
       .from("Appointment")
-      .select("*")
+      .select("*, client:Client(firstName, lastName)")
       .eq("id", appointmentId)
       .single()
 
@@ -148,6 +149,16 @@ export async function POST(request: Request) {
       .select("*")
       .eq("id", newId)
       .single()
+
+    // Send push notification to admin
+    const client = Array.isArray(apt.client) ? apt.client[0] : apt.client
+    const clientName = client ? `${client.firstName} ${client.lastName}` : "Cliente"
+    sendPushIfEnabled("pushReschedule", {
+      title: "Reprogramación",
+      body: `${clientName} reprogramó ${apt.identifier} a ${newDate} ${newTime} (nuevo: ${newIdentifier})`,
+      tag: "reschedule",
+      url: "/admin",
+    })
 
     return NextResponse.json({ success: true, newAppointment: newApt })
   } catch (error) {

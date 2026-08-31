@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { sendPushIfEnabled } from "@/lib/push"
 
 // POST: Cancelar turno público
 export async function POST(request: Request) {
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
 
     const { data: apt } = await supabase
       .from("Appointment")
-      .select("*")
+      .select("*, client:Client(firstName, lastName)")
       .eq("id", appointmentId)
       .single()
 
@@ -51,6 +52,16 @@ export async function POST(request: Request) {
         cancelReason: reason || "Cancelado por el cliente",
       })
       .eq("id", appointmentId)
+
+    // Send push notification to admin
+    const client = Array.isArray(apt.client) ? apt.client[0] : apt.client
+    const clientName = client ? `${client.firstName} ${client.lastName}` : "Cliente"
+    sendPushIfEnabled("pushCancellation", {
+      title: "Cancelación",
+      body: `${clientName} canceló el turno ${apt.identifier}`,
+      tag: "cancellation",
+      url: "/admin",
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

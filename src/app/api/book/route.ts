@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { sendAppointmentConfirmation } from "@/lib/email"
 import { createCalendarEvent } from "@/lib/google-calendar"
+import { sendPushIfEnabled } from "@/lib/push"
 
 // GET: Buscar cliente por teléfono + turnos próximos
 export async function GET(request: Request) {
@@ -250,6 +251,15 @@ export async function POST(request: Request) {
         await supabase.from("Appointment").update({ calendarEventId }).eq("id", id)
       }
     }
+
+    // Send push notification to admin
+    const servicesList = (services || []).map((s: { name: string }) => s.name).join(", ")
+    sendPushIfEnabled("pushNewBooking", {
+      title: "Nuevo turno",
+      body: `${firstName} ${lastName} reservó ${servicesList} para el ${date} a las ${startTime}`,
+      tag: "new-booking",
+      url: "/admin",
+    })
 
     return NextResponse.json({ ...appointment, emailSent, calendarEventId }, { status: 201 })
   } catch (error) {

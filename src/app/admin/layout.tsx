@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { supabase } from "@/lib/supabase"
 import { Sidebar } from "@/components/sidebar"
 import { InstallPrompt } from "@/components/install-prompt"
+import { PushNotificationPrompt } from "@/components/push-notification-prompt"
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -56,6 +57,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       <InstallPrompt />
+      <PushNotificationPrompt />
       <Sidebar user={{ email: user.email }} />
       <main className="flex-1 px-5 pb-24 pt-6 lg:px-10 lg:py-8 lg:pb-6 bg-brand-soft/40 min-h-screen" style={{ paddingTop: "max(calc(var(--spacing) * 18), 1.5rem)" }}>
         {children}
