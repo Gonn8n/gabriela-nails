@@ -30,12 +30,18 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/icons/icon-512.png",
+        url: "https://gabriela.com.ar/icons/icon-512.png",
         width: 512,
         height: 512,
         alt: "Gabriela Nails",
       },
     ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Gabriela Nails",
+    description: "Reservá tu turno online",
+    images: ["https://gabriela.com.ar/icons/icon-512.png"],
   },
   manifest: "/manifest.json",
   icons: {
