@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Save, Plus, Trash2, Clock, CalendarDays, Ban, Bell } from "lucide-react"
+import { Save, Plus, Trash2, Clock, CalendarDays, Ban, Bell, BellRing } from "lucide-react"
 import { PageHeader } from "@/components/page-header"
 import { toast } from "@/components/ui/toast"
 
@@ -64,6 +64,8 @@ export default function SettingsPage() {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
   const [loading, setLoading] = useState(true)
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+  const [pushSubscribed, setPushSubscribed] = useState(false)
+  const [pushSubscribing, setPushSubscribing] = useState(false)
   const [blockForm, setBlockForm] = useState({
     date: "",
     startTime: "08:00",
@@ -74,7 +76,81 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchSettings()
     fetchBlockedDates()
+    checkPushSubscription()
   }, [])
+
+  async function checkPushSubscription() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      setPushSubscribed(!!subscription)
+    } catch {
+      // ignore
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; i++) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
+
+  async function handleEnablePush() {
+    setPushSubscribing(true)
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== "granted") {
+        toast.add({ type: "error", title: "Permiso denegado", description: "Activá las notificaciones en la configuración del navegador" })
+        return
+      }
+      const registration = await navigator.serviceWorker.ready
+      const vapidRes = await fetch("/api/push/vapid-key")
+      const { publicKey } = await vapidRes.json()
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      })
+      const sub = subscription.toJSON()
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint, p256dh: sub.keys?.p256dh, auth: sub.keys?.auth }),
+      })
+      localStorage.removeItem("push-notification-dismissed")
+      setPushSubscribed(true)
+      toast.add({ type: "success", title: "Notificaciones activadas" })
+    } catch (err) {
+      console.error("Push subscribe error:", err)
+      toast.add({ type: "error", title: "Error", description: "No se pudieron activar las notificaciones" })
+    } finally {
+      setPushSubscribing(false)
+    }
+  }
+
+  async function handleDisablePush() {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription) {
+        await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        })
+        await subscription.unsubscribe()
+      }
+      setPushSubscribed(false)
+      toast.add({ type: "success", title: "Notificaciones desactivadas" })
+    } catch (err) {
+      console.error("Push unsubscribe error:", err)
+    }
+  }
 
   async function fetchSettings() {
     const res = await fetch("/api/settings")
@@ -259,6 +335,24 @@ export default function SettingsPage() {
           <p className="text-xs text-muted-foreground">
             Recibí notificaciones en tu celular cuando un cliente reserve, cancele o reprograme un turno.
           </p>
+          <div className="flex items-center gap-2">
+            {pushSubscribed ? (
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                  <BellRing className="h-3 w-3 mr-1" />
+                  Activo
+                </Badge>
+                <Button size="sm" variant="outline" onClick={handleDisablePush} className="text-xs h-7">
+                  Desactivar
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" onClick={handleEnablePush} disabled={pushSubscribing} className="text-xs h-7">
+                <BellRing className="h-3 w-3 mr-1" />
+                {pushSubscribing ? "Activando..." : "Activar notificaciones"}
+              </Button>
+            )}
+          </div>
           <div className="space-y-3">
             <label className="flex items-center justify-between cursor-pointer">
               <div>
