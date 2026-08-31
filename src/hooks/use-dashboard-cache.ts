@@ -24,6 +24,9 @@ interface DashboardData {
   revenue: number
   paidCount: number
   unpaidCompletedCount: number
+  partialCount: number
+  totalDeposits: number
+  pendingAmount: number
 }
 
 const cache = new Map<string, DashboardData>()

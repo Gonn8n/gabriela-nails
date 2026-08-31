@@ -49,6 +49,9 @@ export async function GET(request: Request) {
     let rescheduledCount = 0
     let paidCount = 0
     let unpaidCompletedCount = 0
+    let partialCount = 0
+    let totalDeposits = 0
+    let pendingAmount = 0
     let revenue = 0
     const formatted: typeof appointments = []
 
@@ -59,11 +62,19 @@ export async function GET(request: Request) {
         if (apt.status === "booked" || apt.status === "confirmed") upcomingCount++
         if (apt.status === "completed") {
           completedCount++
-          if (apt.paid) {
+          const deposit = apt.deposit ?? 0
+          const isFullyPaidByDeposit = deposit >= (apt.totalPrice || 0)
+
+          if (apt.paid || isFullyPaidByDeposit) {
             paidCount++
             revenue += apt.totalPrice || 0
+          } else if (deposit > 0) {
+            partialCount++
+            totalDeposits += deposit
+            pendingAmount += (apt.totalPrice || 0) - deposit
           } else {
             unpaidCompletedCount++
+            pendingAmount += apt.totalPrice || 0
           }
         }
         if (apt.rescheduledFrom) rescheduledCount++
@@ -91,6 +102,9 @@ export async function GET(request: Request) {
       rescheduledCount,
       paidCount,
       unpaidCompletedCount,
+      partialCount,
+      totalDeposits,
+      pendingAmount,
       totalClients: totalClients || 0,
       revenue,
     })

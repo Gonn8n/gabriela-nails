@@ -270,6 +270,11 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">${data.revenue.toLocaleString("es-AR")}</div>
             <p className="text-xs text-muted-foreground">cobrados</p>
+            {data.totalDeposits > 0 && (
+              <p className="text-xs text-emerald-600 mt-1">
+                Señas: ${data.totalDeposits.toLocaleString("es-AR")}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -286,16 +291,23 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">agendados, pendientes</p>
           </CardContent>
         </Card>
-        <Card className={data.unpaidCompletedCount > 0 ? "border-amber-300 bg-amber-50/30" : ""}>
+        <Card className={data.pendingAmount > 0 ? "border-amber-300 bg-amber-50/30" : ""}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Pendiente de cobro</CardTitle>
-            <AlertTriangle className={`h-4 w-4 ${data.unpaidCompletedCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+            <AlertTriangle className={`h-4 w-4 ${data.pendingAmount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${data.unpaidCompletedCount > 0 ? "text-amber-600" : ""}`}>
-              {data.unpaidCompletedCount}
+            <div className={`text-2xl font-bold ${data.pendingAmount > 0 ? "text-amber-600" : ""}`}>
+              ${data.pendingAmount.toLocaleString("es-AR")}
             </div>
-            <p className="text-xs text-muted-foreground">finalizados sin cobrar</p>
+            <p className="text-xs text-muted-foreground">
+              {data.unpaidCompletedCount + data.partialCount} turnos
+            </p>
+            {data.totalDeposits > 0 && (
+              <p className="text-xs text-emerald-600 mt-1">
+                Señas: ${data.totalDeposits.toLocaleString("es-AR")}
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card className="col-span-2 lg:col-span-1">
